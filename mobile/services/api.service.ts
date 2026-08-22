@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 const API_PORT = 5000;
 
@@ -6,7 +7,13 @@ const API_PORT = 5000;
 const getBaseUrl = (): string => {
   // Check if we are running in Expo Dev mode
   if (__DEV__) {
-    // Android emulator loopback address is 10.0.2.2
+    // Dynamically retrieve the dev host IP (crucial for physical Expo Go debugging)
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      return `http://${ip}:${API_PORT}/api`;
+    }
+    // Android emulator loopback fallback
     if (Platform.OS === 'android') {
       return `http://10.0.2.2:${API_PORT}/api`;
     }
@@ -211,14 +218,21 @@ class ApiService {
 
   // OCR: Check config/credentials status
   public async checkOcrHealth() {
+    const url = `${BASE_URL}/ocr/health`;
+    console.log(`[OCR] Health check URL: ${url}`);
+    console.log('[OCR] Health check started...');
     try {
-      const response = await fetch(`${BASE_URL}/ocr/health`, {
+      const response = await fetch(url, {
         method: 'GET',
         headers: this.getHeaders(),
       });
+      console.log(`[OCR] HTTP status: ${response.status}`);
       const data = await response.json();
+      console.log(`[OCR] Response body: ${JSON.stringify(data)}`);
       return data; // returns { success, provider, configured, code }
-    } catch (err) {
+    } catch (err: any) {
+      console.log(`[OCR] Network error: ${err.message || err}`);
+      console.log('[OCR] Error message: Unable to connect to backend server');
       return { success: false, configured: false, code: 'NETWORK_ERROR' };
     }
   }

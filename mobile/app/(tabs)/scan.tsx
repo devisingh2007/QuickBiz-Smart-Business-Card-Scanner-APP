@@ -79,10 +79,22 @@ export default function ScanScreen() {
       const health = await apiService.checkOcrHealth();
       
       if (!health.configured) {
-        console.warn('[OCR] Gateway config health check failed.');
+        console.warn('[WARN] [OCR] Gateway config health check failed.');
+        
+        let alertTitle = 'OCR Unconfigured';
+        let alertMessage = 'OCR service is temporarily unavailable. Please enter details manually.';
+
+        if (health.code === 'NETWORK_ERROR') {
+          alertTitle = 'Server Unreachable';
+          alertMessage = 'Unable to connect to the OCR server. Please ensure the backend is running and your device is on the same local network.';
+        } else if (health.code === 'OCR_CREDENTIALS_MISSING') {
+          alertTitle = 'OCR Credentials Missing';
+          alertMessage = 'OCR service is not configured on the server. Please check environment variables or enter details manually.';
+        }
+
         Alert.alert(
-          'OCR Not Configured',
-          'Google Cloud Vision OCR is not configured on the backend server. You can enter details manually.',
+          alertTitle,
+          alertMessage,
           [
             {
               text: 'Enter Manually',

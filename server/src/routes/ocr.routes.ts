@@ -9,9 +9,16 @@ router.post('/business-card', authMiddleware, processBusinessCard);
 
 // OCR configurations status health endpoint
 router.get('/health', (req, res) => {
+  console.log('[OCR HEALTH] Request received');
   const configured = isOcrConfigured();
-  res.json({
-    success: true,
+  console.log('[OCR HEALTH] Google Vision configuration checked');
+  console.log(`[OCR HEALTH] Credentials configured: ${configured}`);
+  
+  const status = configured ? 200 : 503;
+  console.log(`[OCR HEALTH] Response status: ${status}`);
+
+  res.status(status).json({
+    success: configured,
     provider: 'google-cloud-vision',
     configured,
     code: configured ? 'OCR_CONFIGURED' : 'OCR_CREDENTIALS_MISSING',
