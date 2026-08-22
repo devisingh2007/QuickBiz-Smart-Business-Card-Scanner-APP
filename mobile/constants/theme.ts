@@ -1,0 +1,65 @@
+import { Platform } from 'react-native';
+
+export const Colors = {
+  light: {
+    primary: '#2563EB',
+    primaryDark: '#1D4ED8',
+    primaryLight: '#DBEAFE',
+    secondary: '#4F46E5',
+    background: '#F8FAFC',
+    surface: '#FFFFFF',
+    text: '#0F172A',
+    textSecondary: '#475569',
+    textMuted: '#94A3B8',
+    border: '#E2E8F0',
+    tint: '#2563EB',
+    icon: '#475569',
+    tabIconDefault: '#94A3B8',
+    tabIconSelected: '#2563EB',
+    success: '#16A34A',
+    warning: '#F59E0B',
+    error: '#DC2626',
+    info: '#0EA5E9',
+  },
+  dark: {
+    primary: '#3B82F6',
+    primaryDark: '#2563EB',
+    primaryLight: '#1E3A8A',
+    secondary: '#6366F1',
+    background: '#0F172A',
+    surface: '#1E293B',
+    text: '#F8FAFC',
+    textSecondary: '#94A3B8',
+    textMuted: '#64748B',
+    border: '#334155',
+    tint: '#3B82F6',
+    icon: '#94A3B8',
+    tabIconDefault: '#64748B',
+    tabIconSelected: '#3B82F6',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    info: '#38BDF8',
+  },
+};
+
+export const Fonts = Platform.select({
+  ios: {
+    sans: 'System',
+    serif: 'Georgia',
+    rounded: 'System',
+    mono: 'Courier',
+  },
+  default: {
+    sans: 'normal',
+    serif: 'serif',
+    rounded: 'normal',
+    mono: 'monospace',
+  },
+  web: {
+    sans: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    serif: "Georgia, 'Times New Roman', serif",
+    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, sans-serif",
+    mono: "SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+  },
+});
