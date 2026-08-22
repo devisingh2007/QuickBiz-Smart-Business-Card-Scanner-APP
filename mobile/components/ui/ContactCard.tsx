@@ -13,6 +13,10 @@ export interface ContactData {
   designation: string;
   officeAddress?: string;
   category?: 'Client' | 'Recruiter' | 'Investor' | 'Developer' | 'Business Partner' | 'Customer' | 'Friend' | 'Other';
+  syncStatus?: 'pending' | 'syncing' | 'synced' | 'failed';
+  nativeContactId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface ContactCardProps {

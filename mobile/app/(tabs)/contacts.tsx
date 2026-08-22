@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ContactCard, ContactData } from '@/components/ui/ContactCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { apiService } from '@/services/api.service';
+import { contactStore } from '@/services/contact.store';
 
 export default function ContactsScreen() {
   const router = useRouter();
@@ -22,45 +23,36 @@ export default function ContactsScreen() {
   const fetchContacts = useCallback(async () => {
     setLoading(true);
     try {
+      await contactStore.initialize();
+
+      // Trigger automatic background synchronization if online and logged in
       if (apiService.isAuthenticated()) {
-        const fetched = await apiService.getContacts(selectedCategory, searchQuery);
-        setContacts(fetched);
-      } else {
-        // Fallback for offline demo
-        const offlineMock: ContactData[] = [
-          {
-            id: '1',
-            name: 'Rahul Sharma (Offline Demo)',
-            company: 'ABC Technologies',
-            designation: 'Software Engineer',
-            phone: '+91 9876543210',
-            email: 'rahul@abc.com',
-            category: 'Client',
-          },
-          {
-            id: '2',
-            name: 'Priya Patel (Offline Demo)',
-            company: 'XYZ Solutions',
-            designation: 'Product Manager',
-            phone: '+91 9988776655',
-            email: 'priya@xyz.com',
-            category: 'Business Partner',
-          }
-        ];
-
-        // Filter offline mocks locally
-        const filtered = offlineMock.filter(contact => {
-          const matchesSearch = 
-            contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            contact.company.toLowerCase().includes(searchQuery.toLowerCase());
-          const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
-          return matchesSearch && matchesCategory;
-        });
-
-        setContacts(filtered);
+        try {
+          await contactStore.syncPendingContacts();
+        } catch (err) {
+          console.warn('Sync pending contacts failed:', err);
+        }
       }
+
+      // Fetch from persistent local/sync database cache
+      const storedContacts = contactStore.getContacts();
+
+      // Filter locally for fast search and offline rendering
+      const filtered = storedContacts.filter(contact => {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          contact.name.toLowerCase().includes(query) ||
+          (contact.company && contact.company.toLowerCase().includes(query)) ||
+          (contact.designation && contact.designation.toLowerCase().includes(query)) ||
+          (contact.email && contact.email.toLowerCase().includes(query));
+
+        const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+      });
+
+      setContacts(filtered);
     } catch (err: any) {
-      console.warn('Failed to load contacts:', err.message);
+      console.warn('Failed to load contacts:', err.message || err);
     } finally {
       setLoading(false);
     }

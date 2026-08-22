@@ -6,6 +6,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { apiService } from '@/services/api.service';
+import { contactStore } from '@/services/contact.store';
 
 export default function ContactDetailsScreen() {
   const router = useRouter();
@@ -79,8 +80,8 @@ export default function ContactDetailsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (apiService.isAuthenticated() && id) {
-                await apiService.deleteContact(id);
+              if (id) {
+                await contactStore.deleteContact(id);
               }
               Alert.alert('Deleted', 'Contact deleted successfully.');
               router.replace('/(tabs)/contacts');

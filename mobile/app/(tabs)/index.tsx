@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ContactCard, ContactData } from '@/components/ui/ContactCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { apiService, UserProfile } from '@/services/api.service';
+import { contactStore } from '@/services/contact.store';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -24,34 +25,20 @@ export default function HomeScreen() {
       const loadDashboard = async () => {
         setLoading(true);
         try {
+          await contactStore.initialize();
+
+          // Sync pending contacts if authenticated and online
           if (apiService.isAuthenticated()) {
-            const fetched = await apiService.getContacts();
-            setContacts(fetched);
-          } else {
-            // Default mock for offline dashboard demo
-            setContacts([
-              {
-                id: '1',
-                name: 'Rahul Sharma (Offline Demo)',
-                company: 'ABC Technologies',
-                designation: 'Software Engineer',
-                phone: '+91 9876543210',
-                email: 'rahul@abc.com',
-                category: 'Client',
-              },
-              {
-                id: '2',
-                name: 'Priya Patel (Offline Demo)',
-                company: 'XYZ Solutions',
-                designation: 'Product Manager',
-                phone: '+91 9988776655',
-                email: 'priya@xyz.com',
-                category: 'Business Partner',
-              }
-            ]);
+            try {
+              await contactStore.syncPendingContacts();
+            } catch (err) {
+              console.warn('Sync pending contacts failed:', err);
+            }
           }
+
+          setContacts(contactStore.getContacts());
         } catch (err: any) {
-          console.warn('Dashboard fetch failed:', err.message);
+          console.warn('Dashboard fetch failed:', err.message || err);
         } finally {
           setLoading(false);
         }
@@ -61,17 +48,24 @@ export default function HomeScreen() {
     }, [])
   );
 
-  // Compute stats dynamically
+  // Compute stats dynamically from real data
   const totalContacts = contacts.length;
   const addedThisWeek = contacts.filter((c: any) => {
-    if (!c.createdAt) return true; // Default mock contacts
-    const createdDate = new Date(c.createdAt);
+    let createdDate = new Date();
+    if (c.createdAt) {
+      createdDate = new Date(c.createdAt);
+    } else if (c.id && c.id.startsWith('local_')) {
+      const timestamp = parseInt(c.id.split('_')[1], 10);
+      if (!isNaN(timestamp)) {
+        createdDate = new Date(timestamp);
+      }
+    }
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     return createdDate >= oneWeekAgo;
   }).length;
 
-  const recentContacts = contacts.slice(0, 2);
+  const recentContacts = contacts.slice(0, 3);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

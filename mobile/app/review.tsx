@@ -7,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { apiService } from '@/services/api.service';
+import { contactStore } from '@/services/contact.store';
 
 export default function ReviewScreen() {
   const router = useRouter();
@@ -81,6 +82,7 @@ export default function ReviewScreen() {
       }
 
       const contactData = {
+        id: (params.id as string) || undefined,
         name,
         phone,
         email,
@@ -89,45 +91,44 @@ export default function ReviewScreen() {
         officeAddress,
         category,
         nativeContactId: nativeContactId || undefined,
+        syncStatus: 'pending' as any,
       };
 
-      // 2. Sync to MongoDB (if authenticated)
-      if (apiService.isAuthenticated()) {
-        if (params.id) {
-          // Edit mode
-          await apiService.updateContact(params.id as string, contactData);
-        } else {
-          // Create mode
-          const response = await apiService.createContact(contactData, force);
-
-          if (response.duplicate) {
-            setLoading(false);
-            // If it is a duplicate, prompt user to force save or cancel
-            Alert.alert(
-              'Duplicate Contact',
-              response.message || 'This contact might already exist in your directory. Do you want to save it anyway?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Save Anyway', onPress: () => handleSave(true) }
-              ]
-            );
-            return;
-          }
-        }
+      if (params.id) {
+        // Edit mode
+        await contactStore.updateContact(params.id as string, contactData);
+        Alert.alert('Success', 'Contact updated successfully!');
+        router.replace('/(tabs)');
       } else {
-        // Limited mode warning if user chose offline
-        Alert.alert(
-          'Offline Mode',
-          'Contact saved to phone address book. Sign in later to backup to MongoDB Cloud.',
-          [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
-        );
-        return;
-      }
+        // Create mode
+        const result = await contactStore.saveContact(contactData, force);
+        if (result.duplicate) {
+          setLoading(false);
+          // If it is a duplicate, prompt user to force save or cancel
+          Alert.alert(
+            'Duplicate Contact',
+            result.message || 'This contact might already exist in your directory. Do you want to save it anyway?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Save Anyway', onPress: () => handleSave(true) }
+            ]
+          );
+          return;
+        }
 
-      Alert.alert('Success', params.id ? 'Contact updated successfully!' : 'Contact saved successfully!');
-      router.replace('/(tabs)');
+        if (apiService.isAuthenticated()) {
+          Alert.alert('Success', 'Contact saved and synced successfully!');
+        } else {
+          Alert.alert(
+            'Offline Mode',
+            'Contact saved locally. Sign in later to backup to MongoDB Cloud.',
+            [{ text: 'OK' }]
+          );
+        }
+        router.replace('/(tabs)');
+      }
     } catch (error: any) {
-      Alert.alert('Sync Error', error.message || 'Failed to save to database. Contact stored locally.');
+      Alert.alert('Save Error', error.message || 'Failed to save contact. Stored locally.');
       router.replace('/(tabs)');
     } finally {
       setLoading(false);

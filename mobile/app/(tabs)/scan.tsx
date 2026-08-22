@@ -13,8 +13,8 @@ export default function ScanScreen() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
-  // Camera Ref and Permissions
   const cameraRef = useRef<any>(null);
+  const photoBase64Ref = useRef<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
 
   const [scanState, setScanState] = useState<'scan' | 'preview' | 'ocr'>('scan');
@@ -24,6 +24,7 @@ export default function ScanScreen() {
   const handleCapture = async () => {
     if (simulatedMode) {
       setPhotoUri('mock-uri');
+      photoBase64Ref.current = null;
       setScanState('preview');
       return;
     }
@@ -32,10 +33,12 @@ export default function ScanScreen() {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
+          base64: true,
           skipProcessing: false,
         });
         if (photo && photo.uri) {
           setPhotoUri(photo.uri);
+          photoBase64Ref.current = photo.base64 || null;
           setScanState('preview');
         }
       } catch (err: any) {
@@ -48,6 +51,7 @@ export default function ScanScreen() {
 
   const handleRetake = () => {
     setPhotoUri(null);
+    photoBase64Ref.current = null;
     setScanState('scan');
   };
 
@@ -56,8 +60,8 @@ export default function ScanScreen() {
     setScanState('ocr');
 
     try {
-      // Process image with OCR service (which handles mock parsing & delays)
-      const { parsedData } = await ocrService.processImage(photoUri);
+      // Process image using OCR service (calls ocr.space API on base64 data)
+      const { parsedData } = await ocrService.processImage(photoUri, photoBase64Ref.current || undefined);
       
       // Navigate to the review screen and pass parsed contact details
       router.push({
@@ -67,14 +71,16 @@ export default function ScanScreen() {
       
       // Reset state for when they come back
       setPhotoUri(null);
+      photoBase64Ref.current = null;
       setScanState('scan');
     } catch (error: any) {
-      Alert.alert('OCR Error', 'Failed to read contact card. Please enter manually.', [
+      Alert.alert('OCR Error', error.message || 'Failed to read contact card. Please enter manually.', [
         {
           text: 'Enter Manually',
           onPress: () => {
             router.push('/review');
             setPhotoUri(null);
+            photoBase64Ref.current = null;
             setScanState('scan');
           }
         },

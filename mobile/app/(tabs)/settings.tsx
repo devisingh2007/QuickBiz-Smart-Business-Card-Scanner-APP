@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { apiService } from '@/services/api.service';
+import { contactStore } from '@/services/contact.store';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -13,7 +15,14 @@ export default function SettingsScreen() {
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to log out of QuickBiz?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', onPress: () => router.replace('/onboarding') },
+      {
+        text: 'Log Out',
+        onPress: async () => {
+          apiService.logout();
+          await contactStore.clearAll();
+          router.replace('/onboarding');
+        },
+      },
     ]);
   };
 

@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { apiService } from '@/services/api.service';
+import { contactStore } from '@/services/contact.store';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -49,9 +50,11 @@ export default function AuthScreen() {
     try {
       if (isLogin) {
         await apiService.login(email.trim(), password);
+        await contactStore.handleLoginSync();
         router.replace('/permissions');
       } else {
         await apiService.register(name.trim(), email.trim(), password);
+        await contactStore.handleLoginSync();
         Alert.alert('Account Created', 'Your QuickBiz account has been successfully created!');
         router.replace('/permissions');
       }
