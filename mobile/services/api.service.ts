@@ -193,6 +193,21 @@ class ApiService {
 
     return data;
   }
+
+  // OCR: Scan business card
+  public async performOcr(base64Image: string) {
+    const response = await fetch(`${BASE_URL}/ocr/business-card`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ image: base64Image }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || data.message || 'OCR extraction failed');
+    }
+    return data.ocr; // returns { rawText, blocks, lines, confidence }
+  }
 }
 
 export const apiService = new ApiService();

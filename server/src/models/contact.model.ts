@@ -33,6 +33,10 @@ const contactSchema = new Schema(
       type: String,
       trim: true,
     },
+    website: {
+      type: String,
+      trim: true,
+    },
     category: {
       type: String,
       enum: ['Client', 'Recruiter', 'Investor', 'Developer', 'Business Partner', 'Customer', 'Friend', 'Other'],

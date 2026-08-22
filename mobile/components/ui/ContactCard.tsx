@@ -12,6 +12,7 @@ export interface ContactData {
   company: string;
   designation: string;
   officeAddress?: string;
+  website?: string;
   category?: 'Client' | 'Recruiter' | 'Investor' | 'Developer' | 'Business Partner' | 'Customer' | 'Friend' | 'Other';
   syncStatus?: 'pending' | 'syncing' | 'synced' | 'failed';
   nativeContactId?: string;

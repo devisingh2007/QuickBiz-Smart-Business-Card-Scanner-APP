@@ -55,6 +55,7 @@ const runTests = async () => {
       company: 'Antigravity Labs',
       designation: 'Staff AI Engineer',
       officeAddress: '100 Google Way, Mountain View, CA',
+      website: 'https://johndoe.me',
       category: 'Developer',
     };
     const createRes = await fetch(`${BASE_URL}/contacts`, {

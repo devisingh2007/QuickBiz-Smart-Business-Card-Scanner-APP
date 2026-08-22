@@ -6,6 +6,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { apiService } from '@/services/api.service';
 import { ocrService } from '@/services/ocr.service';
 
 export default function ScanScreen() {
@@ -56,11 +57,39 @@ export default function ScanScreen() {
   };
 
   const handleUsePhoto = async () => {
-    if (!photoUri) return;
+    if (simulatedMode || !photoUri || !photoBase64Ref.current) {
+      // Manual entry fallback
+      router.push('/review');
+      setPhotoUri(null);
+      photoBase64Ref.current = null;
+      setScanState('scan');
+      return;
+    }
+
+    if (!apiService.isAuthenticated()) {
+      Alert.alert(
+        'Offline Mode',
+        'Cloud OCR requires a signed-in session. You can enter contact details manually.',
+        [
+          {
+            text: 'Enter Manually',
+            onPress: () => {
+              router.push('/review');
+              setPhotoUri(null);
+              photoBase64Ref.current = null;
+              setScanState('scan');
+            }
+          },
+          { text: 'Cancel', style: 'cancel', onPress: () => setScanState('preview') }
+        ]
+      );
+      return;
+    }
+
     setScanState('ocr');
 
     try {
-      // Process image using OCR service (calls ocr.space API on base64 data)
+      // Process card image using the OCR service abstraction
       const { parsedData } = await ocrService.processImage(photoUri, photoBase64Ref.current || undefined);
       
       // Navigate to the review screen and pass parsed contact details
@@ -74,7 +103,7 @@ export default function ScanScreen() {
       photoBase64Ref.current = null;
       setScanState('scan');
     } catch (error: any) {
-      Alert.alert('OCR Error', error.message || 'Failed to read contact card. Please enter manually.', [
+      Alert.alert('OCR Error', error.message || 'Couldn\'t read this business card. Please enter manually.', [
         {
           text: 'Enter Manually',
           onPress: () => {
