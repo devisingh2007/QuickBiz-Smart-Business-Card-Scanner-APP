@@ -17,12 +17,12 @@ export default function OnboardingScreen() {
     if (currentSlide < 2) {
       setCurrentSlide(currentSlide + 1);
     } else {
-      router.push('/permissions');
+      router.push('/auth');
     }
   };
 
   const handleSkip = () => {
-    router.push('/permissions');
+    router.push('/auth');
   };
 
   const handleBack = () => {
