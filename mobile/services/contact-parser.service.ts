@@ -18,25 +18,25 @@ interface OcrResult {
 class ContactParserService {
   // Parse normalized OCR results into a structured contact card
   public parseOcrResult(ocr: OcrResult): Partial<ContactData> {
-    const rawLines = ocr.lines.map((l) => l.text.trim());
+    const rawLines = ocr.lines.map((l) => l.text.trim()).filter(Boolean);
     
-    let email = '';
-    let phone = '';
-    let website = '';
+    const emails: { value: string; type: string }[] = [];
+    const phones: { value: string; type: string; label: string }[] = [];
+    const websites: { value: string; type: string }[] = [];
     let name = '';
     let designation = '';
     let company = '';
     const addressLines: string[] = [];
 
-    // Job title keywords for designation detection
+    // Keywords for designation detection
     const designKeywords = [
       'engineer', 'developer', 'manager', 'designer', 'director', 'president', 
       'founder', 'ceo', 'cfo', 'cto', 'coo', 'vp', 'architect', 'specialist', 
       'consultant', 'analyst', 'lead', 'partner', 'executive', 'associate', 
-      'officer', 'representative', 'owner', 'proprietor', 'head'
+      'officer', 'representative', 'owner', 'proprietor', 'head', 'vice president'
     ];
 
-    // Company keywords
+    // Company indicators
     const companyKeywords = [
       'ltd', 'inc', 'corp', 'co.', 'corporation', 'solutions', 'technologies', 
       'systems', 'startup', 'group', 'enterprises', 'industries', 'services', 
@@ -51,132 +51,169 @@ class ContactParserService {
       'chowk', 'vihar', 'enclave', 'complex', 'tower', 'india', 'usa', 'sector'
     ];
 
-    // 1. Extract Email
-    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/i;
+    // 1. Extract Emails
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi;
     for (const line of rawLines) {
-      const match = line.match(emailRegex);
-      if (match) {
-        email = match[0].toLowerCase();
-        break;
-      }
-    }
-
-    // 2. Extract Website
-    const webRegex = /\b(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)\b/i;
-    for (const line of rawLines) {
-      if (line.includes('@')) continue; // Ignore email lines
-      
-      const match = line.match(webRegex);
-      if (match) {
-        const domain = match[0].toLowerCase();
-        // Ignore generic words that match domain structures (e.g. e.g.com)
-        if (domain.includes('.') && !domain.startsWith('email') && !domain.startsWith('tel')) {
-          website = domain;
-          break;
+      const matches = line.match(emailRegex);
+      if (matches) {
+        for (const m of matches) {
+          const cleanedVal = m.replace(/\s+/g, '').toLowerCase();
+          if (!emails.some((e) => e.value === cleanedVal)) {
+            emails.push({ value: cleanedVal, type: 'work' });
+          }
         }
       }
     }
 
-    // 3. Extract Phone Number
-    const phoneRegex = /(?:\+?\d{1,4}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g;
-    const phoneLines: string[] = [];
-    
+    // 2. Extract Websites
+    const webRegex = /\b(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)\b/gi;
     for (const line of rawLines) {
-      // Clean up common prefixes
-      const cleaned = line.replace(/^(?:phone|ph|tel|mob|cell|m|p):/i, '').trim();
-      const match = cleaned.match(phoneRegex);
-      if (match) {
-        phoneLines.push(match[0]);
+      if (line.includes('@')) continue; // Skip email lines
+      const matches = line.match(webRegex);
+      if (matches) {
+        for (const m of matches) {
+          const cleanedVal = m.replace(/\s+/g, '').toLowerCase();
+          // Exclude typical labels that confuse parser
+          if (cleanedVal.includes('.') && !cleanedVal.startsWith('tel') && !cleanedVal.startsWith('fax')) {
+            if (!websites.some((w) => w.value === cleanedVal)) {
+              websites.push({ value: cleanedVal, type: 'work' });
+            }
+          }
+        }
       }
     }
-    
-    if (phoneLines.length > 0) {
-      // Pick the first phone number and normalize it (strip hyphens/parentheses)
-      phone = phoneLines[0].replace(/[^\d+]/g, '');
+
+    // 3. Extract Phone Numbers
+    const phoneRegex = /(?:\+?\d{1,4}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g;
+    for (const line of rawLines) {
+      const cleanedLine = line.replace(/^(?:phone|ph|tel|mob|cell|m|p):/i, '').trim();
+      const matches = cleanedLine.match(phoneRegex);
+      if (matches) {
+        for (const m of matches) {
+          const normalized = m.replace(/[^\d+]/g, '');
+          if (normalized.length >= 7) { // Ignore short code noise
+            let type = 'mobile';
+            let label = 'Mobile';
+            const lowerLine = line.toLowerCase();
+            if (lowerLine.includes('fax') || lowerLine.includes('f:')) {
+              type = 'fax';
+              label = 'Fax';
+            } else if (
+              lowerLine.includes('office') || 
+              lowerLine.includes('work') || 
+              lowerLine.includes('off') || 
+              lowerLine.includes('tel') || 
+              lowerLine.includes('ph')
+            ) {
+              type = 'office';
+              label = 'Office';
+            }
+            if (!phones.some((p) => p.value === normalized)) {
+              phones.push({ value: normalized, type, label });
+            }
+          }
+        }
+      }
     }
 
-    // 4. Extract Address
-    // Gather lines that look like addresses
-    const remainingLines: string[] = [];
+    // 4. Extract Address lines
+    const emailList = emails.map((e) => e.value);
+    const webList = websites.map((w) => w.value);
+    const phoneList = phones.map((p) => p.value);
+
+    const nonAddressLines: string[] = [];
+
     for (const line of rawLines) {
-      // Skip email, phone, and website lines
-      if (line === email || line === phone || line === website || line.includes('@') || line.match(phoneRegex)) {
+      // Check if line contains email, website or phone
+      const hasEmail = emailList.some((e) => line.toLowerCase().includes(e));
+      const hasWeb = webList.some((w) => line.toLowerCase().includes(w));
+      const hasPhone = phoneList.some((p) => line.replace(/[^\d]/g, '').includes(p));
+
+      if (hasEmail || hasWeb || hasPhone || line.includes('@') || line.match(phoneRegex)) {
         continue;
       }
 
       const hasAddressKeyword = addressKeywords.some((kw) => line.toLowerCase().includes(kw));
-      const hasNumbers = /\d{4,6}/.test(line); // PIN codes or Zip codes
-      
-      if (hasAddressKeyword || hasNumbers) {
+      const hasZip = /\d{4,6}/.test(line);
+
+      if (hasAddressKeyword || hasZip) {
         addressLines.push(line);
       } else {
-        remainingLines.push(line);
+        nonAddressLines.push(line);
       }
     }
 
     const officeAddress = addressLines.join(', ');
 
-    // 5. Extract Designation (Job Title)
-    let foundDesignationIdx = -1;
-    for (let i = 0; i < remainingLines.length; i++) {
-      const line = remainingLines[i].toLowerCase();
+    // 5. Extract Designation
+    let designIdx = -1;
+    for (let i = 0; i < nonAddressLines.length; i++) {
+      const line = nonAddressLines[i].toLowerCase();
       const isDesignation = designKeywords.some((kw) => line.includes(kw));
       if (isDesignation) {
-        designation = remainingLines[i];
-        foundDesignationIdx = i;
+        designation = nonAddressLines[i];
+        designIdx = i;
         break;
       }
     }
 
-    // Remove designation line from remaining candidate lines
-    if (foundDesignationIdx !== -1) {
-      remainingLines.splice(foundDesignationIdx, 1);
+    if (designIdx !== -1) {
+      nonAddressLines.splice(designIdx, 1);
     }
 
     // 6. Extract Name
-    // Usually Name is one of the top remaining lines (usually index 0)
-    // Filter out very short/long lines and lines containing digits or common company/designation indicators
-    const nameCandidates = remainingLines.filter((line) => {
+    // Reject lines containing digits, company suffixes, or job keywords
+    const nameCandidates = nonAddressLines.filter((line) => {
       const words = line.split(/\s+/);
-      const isShort = words.length < 2 || words.length > 4;
+      const isWordCountInvalid = words.length < 2 || words.length > 4;
       const hasDigits = /\d/.test(line);
       const isCompany = companyKeywords.some((kw) => line.toLowerCase().includes(kw));
-      return !isShort && !hasDigits && !isCompany;
+      return !isWordCountInvalid && !hasDigits && !isCompany;
     });
 
     if (nameCandidates.length > 0) {
       name = nameCandidates[0];
-      // Remove name from remaining candidate lines
-      const nameIdx = remainingLines.indexOf(name);
+      const nameIdx = nonAddressLines.indexOf(name);
       if (nameIdx !== -1) {
-        remainingLines.splice(nameIdx, 1);
+        nonAddressLines.splice(nameIdx, 1);
       }
-    } else if (remainingLines.length > 0) {
-      // Fallback: pick first non-empty line
-      name = remainingLines[0];
-      remainingLines.shift();
+    } else if (nonAddressLines.length > 0) {
+      name = nonAddressLines[0];
+      nonAddressLines.shift();
     }
 
-    // 7. Extract Company Name
-    // Search remaining lines for company indicators, otherwise fallback to first remaining line
-    const companyCandidates = remainingLines.filter((line) => {
+    // 7. Extract Company
+    const companyCandidates = nonAddressLines.filter((line) => {
       return companyKeywords.some((kw) => line.toLowerCase().includes(kw));
     });
 
     if (companyCandidates.length > 0) {
       company = companyCandidates[0];
-    } else if (remainingLines.length > 0) {
-      company = remainingLines[0];
+    } else if (nonAddressLines.length > 0) {
+      company = nonAddressLines[0];
     }
+
+    // 8. Calculate QuickBiz Extraction Quality Score (out of 50)
+    let score = 0;
+    if (name) score += 10;
+    if (phones.length > 0) score += 10;
+    if (emails.length > 0) score += 10;
+    if (company) score += 5;
+    if (designation) score += 5;
+    if (officeAddress) score += 5;
+    if (websites.length > 0) score += 5;
+
+    const extractionQualityScore = Math.round((score / 50) * 100);
 
     return {
       name: name || undefined,
-      phone: phone || undefined,
-      email: email || undefined,
+      phones,
+      emails,
       company: company || undefined,
       designation: designation || undefined,
       officeAddress: officeAddress || undefined,
-      website: website || undefined,
+      websites,
+      extractionQualityScore,
     };
   }
 }

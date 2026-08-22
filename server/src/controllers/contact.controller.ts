@@ -2,11 +2,37 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { Contact } from '../models/contact.model';
 
+// Helper to normalize legacy input parameters into arrays of subdocuments
+const normalizeInputFields = (body: any) => {
+  const normalized = { ...body };
+
+  // Convert single string "phone" to array
+  if (normalized.phone && typeof normalized.phone === 'string') {
+    normalized.phones = [{ value: normalized.phone, type: 'mobile', label: 'Mobile' }];
+    delete normalized.phone;
+  }
+
+  // Convert single string "email" to array
+  if (normalized.email && typeof normalized.email === 'string') {
+    normalized.emails = [{ value: normalized.email, type: 'work' }];
+    delete normalized.email;
+  }
+
+  // Convert single string "website" to array
+  if (normalized.website && typeof normalized.website === 'string') {
+    normalized.websites = [{ value: normalized.website, type: 'work' }];
+    delete normalized.website;
+  }
+
+  return normalized;
+};
+
 // Create a new contact
 export const createContact = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { name, phone, email, company, designation, officeAddress, category, nativeContactId, forceSave } = req.body;
     const userId = req.userId;
+    const normalizedBody = normalizeInputFields(req.body);
+    const { name, phones, emails, company, designation, officeAddress, websites, category, nativeContactId, forceSave } = normalizedBody;
 
     if (!name) {
       res.status(400).json({ success: false, message: 'Name is required' });
@@ -15,9 +41,16 @@ export const createContact = async (req: AuthenticatedRequest, res: Response): P
 
     // Duplicate detection if forceSave is not enabled
     if (!forceSave) {
-      let duplicateQuery: any[] = [];
-      if (email) duplicateQuery.push({ email });
-      if (phone) duplicateQuery.push({ phone });
+      const emailValues = (emails || []).map((e: any) => e.value).filter(Boolean);
+      const phoneValues = (phones || []).map((p: any) => p.value).filter(Boolean);
+
+      const duplicateQuery: any[] = [];
+      if (emailValues.length > 0) {
+        duplicateQuery.push({ 'emails.value': { $in: emailValues } });
+      }
+      if (phoneValues.length > 0) {
+        duplicateQuery.push({ 'phones.value': { $in: phoneValues } });
+      }
 
       if (duplicateQuery.length > 0) {
         const existing = await Contact.findOne({
@@ -29,13 +62,13 @@ export const createContact = async (req: AuthenticatedRequest, res: Response): P
           res.status(409).json({
             success: false,
             duplicate: true,
-            message: 'A contact with this email or phone number already exists.',
+            message: 'A contact with one of these emails or phone numbers already exists.',
             existingContact: {
               id: existing._id,
               name: existing.name,
               company: existing.company,
-              email: existing.email,
-              phone: existing.phone,
+              emails: existing.emails,
+              phones: existing.phones,
             },
           });
           return;
@@ -46,11 +79,12 @@ export const createContact = async (req: AuthenticatedRequest, res: Response): P
     const contact = await Contact.create({
       userId,
       name,
-      phone,
-      email,
+      phones: phones || [],
+      emails: emails || [],
       company,
       designation,
       officeAddress,
+      websites: websites || [],
       category,
       nativeContactId,
       syncStatus: 'synced',
@@ -69,7 +103,7 @@ export const createContact = async (req: AuthenticatedRequest, res: Response): P
   }
 };
 
-// Get all contacts with category filter, search query, and pagination
+// Get all contacts with category filter and search queries
 export const getContacts = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
@@ -82,14 +116,13 @@ export const getContacts = async (req: AuthenticatedRequest, res: Response): Pro
     }
 
     if (q) {
-      // If search query is provided, check if it matches name, company, or designation
       const searchRegex = new RegExp(q as string, 'i');
       filterQuery.$or = [
         { name: searchRegex },
         { company: searchRegex },
         { designation: searchRegex },
-        { email: searchRegex },
-        { phone: searchRegex },
+        { 'emails.value': searchRegex },
+        { 'phones.value': searchRegex },
       ];
     }
 
@@ -138,11 +171,11 @@ export const updateContact = async (req: AuthenticatedRequest, res: Response): P
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const updateFields = req.body;
+    const normalizedUpdateFields = normalizeInputFields(req.body);
 
     const contact = await Contact.findOneAndUpdate(
       { _id: id, userId },
-      { ...updateFields, syncStatus: 'synced' },
+      { ...normalizedUpdateFields, syncStatus: 'synced' },
       { new: true, runValidators: true }
     );
 

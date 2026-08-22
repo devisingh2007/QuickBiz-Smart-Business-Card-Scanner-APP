@@ -20,31 +20,43 @@ export default function ScanScreen() {
 
   const [scanState, setScanState] = useState<'scan' | 'preview' | 'ocr'>('scan');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [simulatedMode, setSimulatedMode] = useState(Platform.OS === 'web');
+  const isWebPlatform = Platform.OS === 'web';
 
   const handleCapture = async () => {
-    if (simulatedMode) {
-      setPhotoUri('mock-uri');
-      photoBase64Ref.current = null;
-      setScanState('preview');
-      return;
-    }
-
     if (cameraRef.current) {
       try {
+        console.log('[SCANNER] cameraReady: true');
+        console.log('[SCANNER] permissionStatus: granted');
+        console.log('[SCANNER] captureStarted: true');
+        
+        const startTime = Date.now();
+        // Capture using optimal high-resolution settings (quality: 0.8)
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
           base64: true,
           skipProcessing: false,
         });
+        
+        const captureTime = Date.now() - startTime;
+
         if (photo && photo.uri) {
-          setPhotoUri(photo.uri);
           photoBase64Ref.current = photo.base64 || null;
+          setPhotoUri(photo.uri);
+          
+          console.log('[SCANNER] captureCompleted: true');
+          console.log(`[SCANNER] imageUri: ${photo.uri}`);
+          console.log(`[SCANNER] imageWidth: ${photo.width}`);
+          console.log(`[SCANNER] imageHeight: ${photo.height}`);
+          console.log(`[SCANNER] base64Length: ${photo.base64?.length || 0}`);
+          console.log(`[SCANNER] processingTime: ${captureTime}ms`);
+
           setScanState('preview');
         }
       } catch (err: any) {
-        Alert.alert('Capture Error', 'Failed to capture card photo. Switching to Simulated Mode.', [
-          { text: 'OK', onPress: () => setSimulatedMode(true) }
+        console.error('[SCANNER] Image Capture failed:', err.message);
+        Alert.alert('Capture Error', 'Failed to take business card photo. Please enter details manually.', [
+          { text: 'Enter Manually', onPress: () => router.push('/review') },
+          { text: 'Cancel', style: 'cancel' }
         ]);
       }
     }
@@ -57,52 +69,60 @@ export default function ScanScreen() {
   };
 
   const handleUsePhoto = async () => {
-    if (simulatedMode || !photoUri || !photoBase64Ref.current) {
-      // Manual entry fallback
-      router.push('/review');
-      setPhotoUri(null);
-      photoBase64Ref.current = null;
-      setScanState('scan');
-      return;
-    }
-
-    if (!apiService.isAuthenticated()) {
-      Alert.alert(
-        'Offline Mode',
-        'Cloud OCR requires a signed-in session. You can enter contact details manually.',
-        [
-          {
-            text: 'Enter Manually',
-            onPress: () => {
-              router.push('/review');
-              setPhotoUri(null);
-              photoBase64Ref.current = null;
-              setScanState('scan');
-            }
-          },
-          { text: 'Cancel', style: 'cancel', onPress: () => setScanState('preview') }
-        ]
-      );
-      return;
-    }
+    if (!photoUri || !photoBase64Ref.current) return;
 
     setScanState('ocr');
 
     try {
-      // Process card image using the OCR service abstraction
-      const { parsedData } = await ocrService.processImage(photoUri, photoBase64Ref.current || undefined);
+      // 1. Diagnose backend OCR Configuration first
+      console.log('[OCR] Verifying backend credentials configuration...');
+      const health = await apiService.checkOcrHealth();
       
-      // Navigate to the review screen and pass parsed contact details
+      if (!health.configured) {
+        console.warn('[OCR] Gateway config health check failed.');
+        Alert.alert(
+          'OCR Not Configured',
+          'Google Cloud Vision OCR is not configured on the backend server. You can enter details manually.',
+          [
+            {
+              text: 'Enter Manually',
+              onPress: () => {
+                router.push('/review');
+                setPhotoUri(null);
+                photoBase64Ref.current = null;
+                setScanState('scan');
+              }
+            },
+            { text: 'Cancel', style: 'cancel', onPress: () => setScanState('preview') }
+          ]
+        );
+        return;
+      }
+
+      // 2. Perform safe base64 OCR upload
+      console.log('[OCR] Starting OCR Upload to gateway server...');
+      const { parsedData } = await ocrService.processImage(photoUri, photoBase64Ref.current);
+      
+      // 3. Navigate directly to review screen with parsed multi-value contact details
       router.push({
         pathname: '/review',
-        params: { ...parsedData },
+        params: { 
+          name: parsedData.name || '',
+          company: parsedData.company || '',
+          designation: parsedData.designation || '',
+          officeAddress: parsedData.officeAddress || '',
+          phonesJson: JSON.stringify(parsedData.phones || []),
+          emailsJson: JSON.stringify(parsedData.emails || []),
+          websitesJson: JSON.stringify(parsedData.websites || []),
+          extractionQualityScore: String(parsedData.extractionQualityScore || 0)
+        },
       });
       
-      // Reset state for when they come back
       setPhotoUri(null);
       photoBase64Ref.current = null;
       setScanState('scan');
     } catch (error: any) {
+      console.error('[OCR] Extraction Failed:', error.message);
       Alert.alert('OCR Error', error.message || 'Couldn\'t read this business card. Please enter manually.', [
         {
           text: 'Enter Manually',
@@ -118,7 +138,35 @@ export default function ScanScreen() {
     }
   };
 
-  if (!permission && !simulatedMode) {
+  // Render Manual Entry Mode landing UI
+  const renderManualEntryLanding = (title: string, message: string) => {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <IconSymbol name="camera.fill" size={64} color="#94A3B8" style={{ marginBottom: 20 }} />
+        <Text style={[styles.permissionTitle, { color: '#FFFFFF' }]}>{title}</Text>
+        <Text style={styles.permissionSub}>{message}</Text>
+        <PrimaryButton 
+          title="Enter Details Manually" 
+          onPress={() => router.push('/review')} 
+          style={styles.permissionBtn} 
+        />
+        {!isWebPlatform && (
+          <TouchableOpacity onPress={requestPermission} style={{ marginTop: 24 }}>
+            <Text style={{ color: colors.primary, fontWeight: '600' }}>Grant Camera Permissions</Text>
+          </TouchableOpacity>
+        )}
+      </SafeAreaView>
+    );
+  };
+
+  if (isWebPlatform) {
+    return renderManualEntryLanding(
+      'Manual Entry Mode',
+      'Card scanning is disabled in web browsers. Tap the button below to enter contact details directly.'
+    );
+  }
+
+  if (!permission) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -127,17 +175,10 @@ export default function ScanScreen() {
     );
   }
 
-  if ((!permission || !permission.granted) && !simulatedMode) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-        <IconSymbol name="camera.fill" size={64} color="#94A3B8" style={{ marginBottom: 20 }} />
-        <Text style={[styles.permissionTitle, { color: '#FFFFFF' }]}>Camera Permission Required</Text>
-        <Text style={styles.permissionSub}>QuickBiz needs camera access to capture and scan business cards.</Text>
-        <PrimaryButton title="Grant Camera Permission" onPress={requestPermission} style={styles.permissionBtn} />
-        <TouchableOpacity onPress={() => setSimulatedMode(true)} style={{ marginTop: 20 }}>
-          <Text style={{ color: colors.primary, fontWeight: '600' }}>Use Simulated Mode for Testing</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+  if (!permission.granted) {
+    return renderManualEntryLanding(
+      'Manual Entry Mode',
+      'Camera access is disabled. Please grant camera permission to scan business cards or use Manual Entry Mode.'
     );
   }
 
@@ -145,41 +186,27 @@ export default function ScanScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19' }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {simulatedMode ? 'Scan Card (Simulated)' : 'Scan Business Card'}
-        </Text>
-        <TouchableOpacity onPress={() => setSimulatedMode(!simulatedMode)} style={styles.toggleSimBtn}>
-          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
-            {simulatedMode ? 'Use Real Camera' : 'Simulate'}
-          </Text>
+        <Text style={styles.headerTitle}>Scan Business Card</Text>
+        <TouchableOpacity onPress={() => router.push('/review')} style={styles.toggleSimBtn}>
+          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>Manual Entry</Text>
         </TouchableOpacity>
       </View>
 
       {scanState === 'scan' && (
         <View style={{ flex: 1 }}>
-          {simulatedMode ? (
-            <View style={styles.viewFinderContainer}>
-              <View style={[styles.cardBorder, { borderColor: colors.primary }]}>
-                <IconSymbol name="camera.fill" size={32} color={colors.primary} style={{ marginBottom: 12 }} />
-                <Text style={styles.helperTextInside}>Simulated View Finder</Text>
-                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 4 }}>Tapping capture loads mock card</Text>
-              </View>
-            </View>
-          ) : (
-            <CameraView style={styles.camera} ref={cameraRef}>
-              <View style={styles.overlay}>
-                <View style={styles.viewFinderContainer}>
-                  <View style={[styles.cardBorder, { borderColor: '#FFFFFF' }]}>
-                    <Text style={styles.helperTextInside}>Position Card Here</Text>
-                  </View>
+          <CameraView style={styles.camera} ref={cameraRef}>
+            <View style={styles.overlay}>
+              <View style={styles.viewFinderContainer}>
+                <View style={[styles.cardBorder, { borderColor: '#FFFFFF' }]}>
+                  <Text style={styles.helperTextInside}>Position Card Here</Text>
                 </View>
               </View>
-            </CameraView>
-          )}
+            </View>
+          </CameraView>
 
           <Text style={styles.instructionText}>Place the entire card inside the frame.</Text>
 
-          {/* Capture Controls */}
+          {/* Capture Control Button */}
           <View style={styles.controlsContainer}>
             <TouchableOpacity onPress={handleCapture} style={styles.captureOuterCircle}>
               <View style={styles.captureInnerCircle} />
@@ -190,18 +217,8 @@ export default function ScanScreen() {
 
       {scanState === 'preview' && (
         <View style={{ flex: 1 }}>
-          {/* Image Preview Container */}
           <View style={styles.viewFinderContainer}>
-            {simulatedMode || !photoUri ? (
-              <View style={[styles.cardBorder, { borderColor: colors.primary, backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-                <View style={styles.mockCardTextContainer}>
-                  <Text style={styles.mockCardTitle}>[Business Card Image]</Text>
-                  <Text style={styles.mockCardSub}>Simulating camera capture preview...</Text>
-                </View>
-              </View>
-            ) : (
-              <Image source={{ uri: photoUri }} style={styles.previewImage} />
-            )}
+            {photoUri && <Image source={{ uri: photoUri }} style={styles.previewImage} />}
           </View>
           
           <Text style={styles.instructionText}>Confirm if the photo is sharp and readable.</Text>
@@ -225,11 +242,9 @@ export default function ScanScreen() {
           <Text style={styles.loadingSub}>Extracting contact information using OCR</Text>
           
           <View style={styles.ocrStatusList}>
-            <Text style={styles.ocrStatusItem}>✓ Full Name</Text>
-            <Text style={styles.ocrStatusItem}>✓ Phone Number</Text>
-            <Text style={styles.ocrStatusItem}>✓ Email Address</Text>
-            <Text style={[styles.ocrStatusItem, { opacity: 0.5 }]}>○ Company Name</Text>
-            <Text style={[styles.ocrStatusItem, { opacity: 0.5 }]}>○ Designation</Text>
+            <Text style={styles.ocrStatusItem}>✓ Scanning layout lines...</Text>
+            <Text style={styles.ocrStatusItem}>✓ Reconstructing text structures...</Text>
+            <Text style={styles.ocrStatusItem}>✓ Parsing contact fields...</Text>
           </View>
         </View>
       )}
@@ -338,21 +353,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  },
-  mockCardTextContainer: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  mockCardTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  mockCardSub: {
-    color: '#94A3B8',
-    fontSize: 13,
-    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,

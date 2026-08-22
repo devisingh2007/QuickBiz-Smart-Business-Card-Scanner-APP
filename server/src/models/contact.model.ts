@@ -1,5 +1,21 @@
 import { Schema, model } from 'mongoose';
 
+const phoneSchema = new Schema({
+  value: { type: String, required: true, trim: true },
+  type: { type: String, trim: true, default: 'mobile' },
+  label: { type: String, trim: true },
+}, { _id: false });
+
+const emailSchema = new Schema({
+  value: { type: String, required: true, trim: true, lowercase: true },
+  type: { type: String, trim: true, default: 'work' },
+}, { _id: false });
+
+const websiteSchema = new Schema({
+  value: { type: String, required: true, trim: true },
+  type: { type: String, trim: true, default: 'work' },
+}, { _id: false });
+
 const contactSchema = new Schema(
   {
     userId: {
@@ -12,14 +28,13 @@ const contactSchema = new Schema(
       required: true,
       trim: true,
     },
-    phone: {
-      type: String,
-      trim: true,
+    phones: {
+      type: [phoneSchema],
+      default: [],
     },
-    email: {
-      type: String,
-      lowercase: true,
-      trim: true,
+    emails: {
+      type: [emailSchema],
+      default: [],
     },
     company: {
       type: String,
@@ -33,9 +48,9 @@ const contactSchema = new Schema(
       type: String,
       trim: true,
     },
-    website: {
-      type: String,
-      trim: true,
+    websites: {
+      type: [websiteSchema],
+      default: [],
     },
     category: {
       type: String,
@@ -63,9 +78,9 @@ const contactSchema = new Schema(
 
 // Indexes for fast searching and user-data isolation
 contactSchema.index({ userId: 1 });
-contactSchema.index({ email: 1 });
-contactSchema.index({ phone: 1 });
+contactSchema.index({ 'emails.value': 1 });
+contactSchema.index({ 'phones.value': 1 });
 // Compound text index for name, company, email, phone search queries
-contactSchema.index({ name: 'text', company: 'text', designation: 'text', email: 'text' });
+contactSchema.index({ name: 'text', company: 'text', designation: 'text', 'emails.value': 'text' });
 
 export const Contact = model('Contact', contactSchema);

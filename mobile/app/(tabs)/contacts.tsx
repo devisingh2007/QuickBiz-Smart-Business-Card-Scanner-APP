@@ -133,7 +133,19 @@ export default function ContactsScreen() {
               contact={item}
               onPress={() => router.push({
                 pathname: '/contact-details',
-                params: { ...item }
+                params: {
+                  id: item.id || '',
+                  name: item.name || '',
+                  company: item.company || '',
+                  designation: item.designation || '',
+                  officeAddress: item.officeAddress || '',
+                  category: item.category || 'Other',
+                  nativeContactId: item.nativeContactId || '',
+                  phonesJson: JSON.stringify(item.phones || []),
+                  emailsJson: JSON.stringify(item.emails || []),
+                  websitesJson: JSON.stringify(item.websites || []),
+                  extractionQualityScore: item.extractionQualityScore ? String(item.extractionQualityScore) : ''
+                }
               })}
             />
           )}

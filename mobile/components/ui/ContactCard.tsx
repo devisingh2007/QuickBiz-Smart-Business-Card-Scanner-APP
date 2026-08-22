@@ -7,17 +7,21 @@ import { IconSymbol } from './icon-symbol';
 export interface ContactData {
   id?: string;
   name: string;
-  phone: string;
-  email: string;
+  phone?: string; // Legacy fallback
+  phones?: { value: string; type?: string; label?: string }[];
+  email?: string; // Legacy fallback
+  emails?: { value: string; type?: string }[];
   company: string;
   designation: string;
   officeAddress?: string;
-  website?: string;
+  website?: string; // Legacy fallback
+  websites?: { value: string; type?: string }[];
   category?: 'Client' | 'Recruiter' | 'Investor' | 'Developer' | 'Business Partner' | 'Customer' | 'Friend' | 'Other';
   syncStatus?: 'pending' | 'syncing' | 'synced' | 'failed';
   nativeContactId?: string;
   createdAt?: string;
   updatedAt?: string;
+  extractionQualityScore?: number;
 }
 
 interface ContactCardProps {
@@ -28,6 +32,15 @@ interface ContactCardProps {
 export function ContactCard({ contact, onPress }: ContactCardProps) {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
+
+  // Resolve primary phone and email from arrays or legacy properties
+  const primaryPhone = contact.phones && contact.phones.length > 0
+    ? contact.phones[0].value
+    : contact.phone;
+
+  const primaryEmail = contact.emails && contact.emails.length > 0
+    ? contact.emails[0].value
+    : contact.email;
 
   // Get initials for avatar placeholder
   const getInitials = (name: string) => {
@@ -93,16 +106,16 @@ export function ContactCard({ contact, onPress }: ContactCardProps) {
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
       <View style={styles.body}>
-        {contact.phone && (
+        {primaryPhone && (
           <View style={styles.detailRow}>
             <IconSymbol name="phone.fill" size={14} color={colors.textMuted} style={styles.icon} />
-            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{contact.phone}</Text>
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{primaryPhone}</Text>
           </View>
         )}
-        {contact.email && (
+        {primaryEmail && (
           <View style={styles.detailRow}>
             <IconSymbol name="envelope.fill" size={14} color={colors.textMuted} style={styles.icon} />
-            <Text style={[styles.detailText, { color: colors.textSecondary }]} numberOfLines={1}>{contact.email}</Text>
+            <Text style={[styles.detailText, { color: colors.textSecondary }]} numberOfLines={1}>{primaryEmail}</Text>
           </View>
         )}
       </View>

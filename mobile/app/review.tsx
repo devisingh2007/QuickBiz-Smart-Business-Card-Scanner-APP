@@ -8,6 +8,7 @@ import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { apiService } from '@/services/api.service';
 import { contactStore } from '@/services/contact.store';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function ReviewScreen() {
   const router = useRouter();
@@ -17,12 +18,52 @@ export default function ReviewScreen() {
 
   // Initialize fields from router parameters (extracted via OCR)
   const [name, setName] = useState((params.name as string) || '');
-  const [phone, setPhone] = useState((params.phone as string) || '');
-  const [email, setEmail] = useState((params.email as string) || '');
   const [company, setCompany] = useState((params.company as string) || '');
   const [designation, setDesignation] = useState((params.designation as string) || '');
   const [officeAddress, setOfficeAddress] = useState((params.officeAddress as string) || '');
   const [category, setCategory] = useState<any>((params.category as string) || 'Client');
+
+  // Load and format multi-value parameter arrays
+  const [phones, setPhones] = useState<{ value: string; type: string; label: string }[]>(() => {
+    if (params.phonesJson) {
+      try {
+        const parsed = JSON.parse(params.phonesJson as string);
+        if (parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    if (params.phone) {
+      return [{ value: params.phone as string, type: 'mobile', label: 'Mobile' }];
+    }
+    return [{ value: '', type: 'mobile', label: 'Mobile' }];
+  });
+
+  const [emails, setEmails] = useState<{ value: string; type: string }[]>(() => {
+    if (params.emailsJson) {
+      try {
+        const parsed = JSON.parse(params.emailsJson as string);
+        if (parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    if (params.email) {
+      return [{ value: params.email as string, type: 'work' }];
+    }
+    return [{ value: '', type: 'work' }];
+  });
+
+  const [websites, setWebsites] = useState<{ value: string; type: string }[]>(() => {
+    if (params.websitesJson) {
+      try {
+        const parsed = JSON.parse(params.websitesJson as string);
+        if (parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    if (params.website) {
+      return [{ value: params.website as string, type: 'work' }];
+    }
+    return [{ value: '', type: 'work' }];
+  });
+
+  const qualityScore = params.extractionQualityScore ? Number(params.extractionQualityScore) : null;
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -32,10 +73,41 @@ export default function ReviewScreen() {
   const validate = () => {
     const tempErrors: { [key: string]: string } = {};
     if (!name) tempErrors.name = 'Name is required';
-    if (email && !/\S+@\S+\.\S+/.test(email)) tempErrors.email = 'Invalid email format';
     
+    // Validate email inputs
+    emails.forEach((email, idx) => {
+      if (email.value && !/\S+@\S+\.\S+/.test(email.value)) {
+        tempErrors[`email_${idx}`] = 'Invalid email format';
+      }
+    });
+
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
+  };
+
+  // Add/Remove multi-value fields helpers
+  const addPhoneField = () => setPhones([...phones, { value: '', type: 'office', label: 'Office' }]);
+  const removePhoneField = (index: number) => setPhones(phones.filter((_, idx) => idx !== index));
+  const updatePhoneValue = (index: number, val: string) => {
+    const next = [...phones];
+    next[index].value = val;
+    setPhones(next);
+  };
+
+  const addEmailField = () => setEmails([...emails, { value: '', type: 'work' }]);
+  const removeEmailField = (index: number) => setEmails(emails.filter((_, idx) => idx !== index));
+  const updateEmailValue = (index: number, val: string) => {
+    const next = [...emails];
+    next[index].value = val;
+    setEmails(next);
+  };
+
+  const addWebsiteField = () => setWebsites([...websites, { value: '', type: 'work' }]);
+  const removeWebsiteField = (index: number) => setWebsites(websites.filter((_, idx) => idx !== index));
+  const updateWebsiteValue = (index: number, val: string) => {
+    const next = [...websites];
+    next[index].value = val;
+    setWebsites(next);
   };
 
   // Create native device contact
@@ -54,11 +126,12 @@ export default function ReviewScreen() {
       const contactFields: any = {
         firstName: name.split(' ')[0] || '',
         lastName: name.split(' ').slice(1).join(' ') || '',
-        phoneNumbers: phone ? [{ label: 'mobile', number: phone }] : [],
-        emails: email ? [{ label: 'work', email }] : [],
+        phoneNumbers: phones.filter((p) => p.value).map((p) => ({ label: p.label.toLowerCase(), number: p.value })),
+        emails: emails.filter((e) => e.value).map((e) => ({ label: e.type.toLowerCase(), email: e.value })),
         company: company || '',
         jobTitle: designation || '',
         addresses: officeAddress ? [{ label: 'work', street: officeAddress }] : [],
+        urlAddresses: websites.filter((w) => w.value).map((w) => ({ label: w.type.toLowerCase(), url: w.value })),
       };
 
       const contactId = await Contacts.addContactAsync(contactFields);
@@ -76,7 +149,7 @@ export default function ReviewScreen() {
     try {
       let nativeContactId: string | null = null;
       
-      // 1. Try to save native contact first (local-first approach)
+      // Try to save native contact first (local-first approach)
       if (Platform.OS !== 'web') {
         nativeContactId = await saveNativeContact();
       }
@@ -84,14 +157,16 @@ export default function ReviewScreen() {
       const contactData = {
         id: (params.id as string) || undefined,
         name,
-        phone,
-        email,
+        phones: phones.filter((p) => p.value),
+        emails: emails.filter((e) => e.value),
         company,
         designation,
         officeAddress,
+        websites: websites.filter((w) => w.value),
         category,
         nativeContactId: nativeContactId || undefined,
         syncStatus: 'pending' as any,
+        extractionQualityScore: qualityScore || undefined,
       };
 
       if (params.id) {
@@ -104,7 +179,6 @@ export default function ReviewScreen() {
         const result = await contactStore.saveContact(contactData, force);
         if (result.duplicate) {
           setLoading(false);
-          // If it is a duplicate, prompt user to force save or cancel
           Alert.alert(
             'Duplicate Contact',
             result.message || 'This contact might already exist in your directory. Do you want to save it anyway?',
@@ -135,6 +209,19 @@ export default function ReviewScreen() {
     }
   };
 
+  const renderQualityScoreBadge = () => {
+    if (qualityScore === null) return null;
+    let scoreColor = '#10B981'; // Green
+    if (qualityScore < 50) scoreColor = '#EF4444'; // Red
+    else if (qualityScore < 75) scoreColor = '#F59E0B'; // Orange
+
+    return (
+      <View style={[styles.scoreBadge, { backgroundColor: scoreColor }]}>
+        <Text style={styles.scoreText}>Extraction Quality Score: {qualityScore}%</Text>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
@@ -151,7 +238,9 @@ export default function ReviewScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>EXTRACTED DETAILS</Text>
+          {renderQualityScoreBadge()}
+
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CONTACT DETAILS</Text>
           
           <InputField
             label="Full Name"
@@ -161,24 +250,91 @@ export default function ReviewScreen() {
             autoCapitalize="words"
           />
 
-          <InputField
-            label="Phone Number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
+          {/* Multiple Phone Numbers */}
+          <View style={styles.multiValueSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Phone Number(s)</Text>
+              <TouchableOpacity onPress={addPhoneField}>
+                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>+ Add Phone</Text>
+              </TouchableOpacity>
+            </View>
+            {phones.map((phone, idx) => (
+              <View key={idx} style={styles.multiValueRow}>
+                <View style={{ flex: 1 }}>
+                  <InputField
+                    label={`Phone #${idx + 1}`}
+                    value={phone.value}
+                    onChangeText={(val) => updatePhoneValue(idx, val)}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                {phones.length > 1 && (
+                  <TouchableOpacity onPress={() => removePhoneField(idx)} style={styles.removeBtn}>
+                    <IconSymbol name="minus.circle.fill" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </View>
+
+          {/* Multiple Email Addresses */}
+          <View style={styles.multiValueSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Email Address(es)</Text>
+              <TouchableOpacity onPress={addEmailField}>
+                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>+ Add Email</Text>
+              </TouchableOpacity>
+            </View>
+            {emails.map((email, idx) => (
+              <View key={idx} style={styles.multiValueRow}>
+                <View style={{ flex: 1 }}>
+                  <InputField
+                    label={`Email #${idx + 1}`}
+                    value={email.value}
+                    onChangeText={(val) => updateEmailValue(idx, val)}
+                    error={errors[`email_${idx}`]}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                {emails.length > 1 && (
+                  <TouchableOpacity onPress={() => removeEmailField(idx)} style={styles.removeBtn}>
+                    <IconSymbol name="minus.circle.fill" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </View>
+
+          {/* Multiple Websites */}
+          <View style={styles.multiValueSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Website Link(s)</Text>
+              <TouchableOpacity onPress={addWebsiteField}>
+                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>+ Add Website</Text>
+              </TouchableOpacity>
+            </View>
+            {websites.map((website, idx) => (
+              <View key={idx} style={styles.multiValueRow}>
+                <View style={{ flex: 1 }}>
+                  <InputField
+                    label={`Website #${idx + 1}`}
+                    value={website.value}
+                    onChangeText={(val) => updateWebsiteValue(idx, val)}
+                    autoCapitalize="none"
+                  />
+                </View>
+                {websites.length > 1 && (
+                  <TouchableOpacity onPress={() => removeWebsiteField(idx)} style={styles.removeBtn}>
+                    <IconSymbol name="minus.circle.fill" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </View>
 
           <InputField
-            label="Email Address"
-            value={email}
-            onChangeText={setEmail}
-            error={errors.email}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <InputField
-            label="Company"
+            label="Company Name"
             value={company}
             onChangeText={setCompany}
             autoCapitalize="words"
@@ -280,11 +436,16 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: 'top',
     paddingTop: 12,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 8,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   categoryContainer: {
     marginBottom: 28,
@@ -304,5 +465,35 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     marginTop: 12,
+  },
+  scoreBadge: {
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  scoreText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  multiValueSection: {
+    marginBottom: 16,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  multiValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  removeBtn: {
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
   },
 });

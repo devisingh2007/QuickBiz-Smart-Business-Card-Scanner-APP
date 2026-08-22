@@ -50,12 +50,20 @@ const runTests = async () => {
     console.log('\n[Test 3] Contact Creation...');
     const contactData = {
       name: 'John Doe',
-      phone: '+91 9876543210',
-      email: 'johndoe@example.com',
+      phones: [
+        { value: '+91 98765 43210', type: 'mobile', label: 'Mobile' },
+        { value: '+91 79 12345678', type: 'office', label: 'Office' }
+      ],
+      emails: [
+        { value: 'johndoe@example.com', type: 'work' },
+        { value: 'johndoe.personal@example.com', type: 'personal' }
+      ],
       company: 'Antigravity Labs',
       designation: 'Staff AI Engineer',
       officeAddress: '100 Google Way, Mountain View, CA',
-      website: 'https://johndoe.me',
+      websites: [
+        { value: 'https://johndoe.me', type: 'work' }
+      ],
       category: 'Developer',
     };
     const createRes = await fetch(`${BASE_URL}/contacts`, {

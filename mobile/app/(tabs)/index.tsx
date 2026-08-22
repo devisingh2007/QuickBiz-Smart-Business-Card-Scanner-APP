@@ -134,7 +134,19 @@ export default function HomeScreen() {
                 contact={contact}
                 onPress={() => router.push({
                   pathname: '/contact-details',
-                  params: { ...contact }
+                  params: {
+                    id: contact.id || '',
+                    name: contact.name || '',
+                    company: contact.company || '',
+                    designation: contact.designation || '',
+                    officeAddress: contact.officeAddress || '',
+                    category: contact.category || 'Other',
+                    nativeContactId: contact.nativeContactId || '',
+                    phonesJson: JSON.stringify(contact.phones || []),
+                    emailsJson: JSON.stringify(contact.emails || []),
+                    websitesJson: JSON.stringify(contact.websites || []),
+                    extractionQualityScore: contact.extractionQualityScore ? String(contact.extractionQualityScore) : ''
+                  }
                 })}
               />
             ))

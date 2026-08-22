@@ -208,6 +208,20 @@ class ApiService {
     }
     return data.ocr; // returns { rawText, blocks, lines, confidence }
   }
+
+  // OCR: Check config/credentials status
+  public async checkOcrHealth() {
+    try {
+      const response = await fetch(`${BASE_URL}/ocr/health`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+      const data = await response.json();
+      return data; // returns { success, provider, configured, code }
+    } catch (err) {
+      return { success: false, configured: false, code: 'NETWORK_ERROR' };
+    }
+  }
 }
 
 export const apiService = new ApiService();
