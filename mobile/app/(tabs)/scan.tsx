@@ -1,45 +1,147 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ActivityIndicator, Image, Alert, Platform } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ocrService } from '@/services/ocr.service';
 
 export default function ScanScreen() {
+  const router = useRouter();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
-  const [scanState, setScanState] = useState<'scan' | 'preview' | 'ocr'>('scan');
 
-  const handleCapture = () => {
-    setScanState('preview');
+  // Camera Ref and Permissions
+  const cameraRef = useRef<any>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const [scanState, setScanState] = useState<'scan' | 'preview' | 'ocr'>('scan');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [simulatedMode, setSimulatedMode] = useState(Platform.OS === 'web');
+
+  const handleCapture = async () => {
+    if (simulatedMode) {
+      setPhotoUri('mock-uri');
+      setScanState('preview');
+      return;
+    }
+
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: false,
+        });
+        if (photo && photo.uri) {
+          setPhotoUri(photo.uri);
+          setScanState('preview');
+        }
+      } catch (err: any) {
+        Alert.alert('Capture Error', 'Failed to capture card photo. Switching to Simulated Mode.', [
+          { text: 'OK', onPress: () => setSimulatedMode(true) }
+        ]);
+      }
+    }
   };
 
   const handleRetake = () => {
+    setPhotoUri(null);
     setScanState('scan');
   };
 
-  const handleUsePhoto = () => {
+  const handleUsePhoto = async () => {
+    if (!photoUri) return;
     setScanState('ocr');
-    // Simulate OCR delay, then go to success/extracted screen or display mock details
-    setTimeout(() => {
+
+    try {
+      // Process image with OCR service (which handles mock parsing & delays)
+      const { parsedData } = await ocrService.processImage(photoUri);
+      
+      // Navigate to the review screen and pass parsed contact details
+      router.push({
+        pathname: '/review',
+        params: { ...parsedData },
+      });
+      
+      // Reset state for when they come back
+      setPhotoUri(null);
       setScanState('scan');
-      alert('Mock OCR text extraction complete!\n\nName: Rahul Sharma\nDesignation: Software Engineer\nCompany: ABC Technologies\nPhone: +91 9876543210\nEmail: rahul@abc.com');
-    }, 2500);
+    } catch (error: any) {
+      Alert.alert('OCR Error', 'Failed to read contact card. Please enter manually.', [
+        {
+          text: 'Enter Manually',
+          onPress: () => {
+            router.push('/review');
+            setPhotoUri(null);
+            setScanState('scan');
+          }
+        },
+        { text: 'Retry', onPress: () => setScanState('preview') }
+      ]);
+    }
   };
+
+  if (!permission && !simulatedMode) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: '#FFFFFF', marginTop: 12 }}>Loading Camera...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if ((!permission || !permission.granted) && !simulatedMode) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <IconSymbol name="camera.fill" size={64} color="#94A3B8" style={{ marginBottom: 20 }} />
+        <Text style={[styles.permissionTitle, { color: '#FFFFFF' }]}>Camera Permission Required</Text>
+        <Text style={styles.permissionSub}>QuickBiz needs camera access to capture and scan business cards.</Text>
+        <PrimaryButton title="Grant Camera Permission" onPress={requestPermission} style={styles.permissionBtn} />
+        <TouchableOpacity onPress={() => setSimulatedMode(true)} style={{ marginTop: 20 }}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Use Simulated Mode for Testing</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19' }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Scan Business Card</Text>
+        <Text style={styles.headerTitle}>
+          {simulatedMode ? 'Scan Card (Simulated)' : 'Scan Business Card'}
+        </Text>
+        <TouchableOpacity onPress={() => setSimulatedMode(!simulatedMode)} style={styles.toggleSimBtn}>
+          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
+            {simulatedMode ? 'Use Real Camera' : 'Simulate'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {scanState === 'scan' && (
-        <React.Fragment>
-          {/* Scanner View Finder */}
-          <View style={styles.viewFinderContainer}>
-            <View style={[styles.cardBorder, { borderColor: '#FFFFFF' }]}>
-              <Text style={styles.helperTextInside}>Position Card Here</Text>
+        <View style={{ flex: 1 }}>
+          {simulatedMode ? (
+            <View style={styles.viewFinderContainer}>
+              <View style={[styles.cardBorder, { borderColor: colors.primary }]}>
+                <IconSymbol name="camera.fill" size={32} color={colors.primary} style={{ marginBottom: 12 }} />
+                <Text style={styles.helperTextInside}>Simulated View Finder</Text>
+                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 4 }}>Tapping capture loads mock card</Text>
+              </View>
             </View>
-          </View>
+          ) : (
+            <CameraView style={styles.camera} ref={cameraRef}>
+              <View style={styles.overlay}>
+                <View style={styles.viewFinderContainer}>
+                  <View style={[styles.cardBorder, { borderColor: '#FFFFFF' }]}>
+                    <Text style={styles.helperTextInside}>Position Card Here</Text>
+                  </View>
+                </View>
+              </View>
+            </CameraView>
+          )}
+
           <Text style={styles.instructionText}>Place the entire card inside the frame.</Text>
 
           {/* Capture Controls */}
@@ -48,22 +150,25 @@ export default function ScanScreen() {
               <View style={styles.captureInnerCircle} />
             </TouchableOpacity>
           </View>
-        </React.Fragment>
+        </View>
       )}
 
       {scanState === 'preview' && (
-        <React.Fragment>
+        <View style={{ flex: 1 }}>
           {/* Image Preview Container */}
           <View style={styles.viewFinderContainer}>
-            <View style={[styles.cardBorder, { borderColor: colors.primary, backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-              <View style={styles.mockCardTextContainer}>
-                <Text style={styles.mockCardTitle}>Rahul Sharma</Text>
-                <Text style={styles.mockCardSub}>Software Engineer</Text>
-                <Text style={styles.mockCardSub}>ABC Technologies Pvt. Ltd.</Text>
-                <Text style={styles.mockCardSub}>+91 9876543210 | rahul@abc.com</Text>
+            {simulatedMode || !photoUri ? (
+              <View style={[styles.cardBorder, { borderColor: colors.primary, backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
+                <View style={styles.mockCardTextContainer}>
+                  <Text style={styles.mockCardTitle}>[Business Card Image]</Text>
+                  <Text style={styles.mockCardSub}>Simulating camera capture preview...</Text>
+                </View>
               </View>
-            </View>
+            ) : (
+              <Image source={{ uri: photoUri }} style={styles.previewImage} />
+            )}
           </View>
+          
           <Text style={styles.instructionText}>Confirm if the photo is sharp and readable.</Text>
 
           {/* Preview Controls */}
@@ -75,7 +180,7 @@ export default function ScanScreen() {
               <Text style={[styles.previewButtonText, { color: '#FFFFFF' }]}>Use Photo</Text>
             </TouchableOpacity>
           </View>
-        </React.Fragment>
+        </View>
       )}
 
       {scanState === 'ocr' && (
@@ -103,8 +208,9 @@ const styles = StyleSheet.create({
   },
   header: {
     height: 56,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
@@ -113,6 +219,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  toggleSimBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  camera: {
+    flex: 1,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   viewFinderContainer: {
     flex: 1,
@@ -138,13 +257,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#94A3B8',
     fontSize: 14,
-    marginBottom: 24,
+    marginVertical: 16,
   },
   controlsContainer: {
-    height: 120,
+    height: 100,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   captureOuterCircle: {
     width: 72,
@@ -161,11 +280,17 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: '#FFFFFF',
   },
+  previewImage: {
+    width: '100%',
+    aspectRatio: 1.586,
+    borderRadius: 16,
+    resizeMode: 'cover',
+  },
   previewControls: {
     flexDirection: 'row',
     gap: 16,
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 30,
   },
   previewButton: {
     flex: 1,
@@ -224,5 +349,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '500',
+  },
+  permissionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  permissionSub: {
+    color: '#94A3B8',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  permissionBtn: {
+    width: '100%',
   },
 });
