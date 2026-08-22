@@ -64,3 +64,6 @@ Implementation_Plan.md
 Technical_Design.md
 UX_DesignBrief.md
 PRD.md
+
+# Google Cloud Service Account Credentials
+server/google-service-account*.json

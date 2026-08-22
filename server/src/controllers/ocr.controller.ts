@@ -1,31 +1,65 @@
 import { Request, Response } from 'express';
 import vision from '@google-cloud/vision';
 
+import fs from 'fs';
+import path from 'path';
+
 // Helper to determine if Google Cloud credentials are set up
 export const isOcrConfigured = (): boolean => {
   const hasInline = !!(process.env.GOOGLE_CLOUD_CLIENT_EMAIL && process.env.GOOGLE_CLOUD_PRIVATE_KEY && process.env.GOOGLE_CLOUD_PROJECT_ID);
-  const hasFile = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  return hasInline || hasFile;
+  if (hasInline) {
+    console.log('[OCR CONFIG] GOOGLE_APPLICATION_CREDENTIALS configured: true (Inline variables)');
+    return true;
+  }
+
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!credPath) {
+    console.log('[OCR CONFIG] GOOGLE_APPLICATION_CREDENTIALS configured: false (Variables missing)');
+    return false;
+  }
+
+  try {
+    const resolvedPath = path.isAbsolute(credPath) ? credPath : path.resolve(process.cwd(), credPath);
+    if (fs.existsSync(resolvedPath)) {
+      const stats = fs.statSync(resolvedPath);
+      if (stats.isFile()) {
+        const content = fs.readFileSync(resolvedPath, 'utf8');
+        const parsed = JSON.parse(content);
+        const isValid = parsed.type === 'service_account' && !!parsed.private_key;
+        console.log(`[OCR CONFIG] GOOGLE_APPLICATION_CREDENTIALS configured: ${isValid} (Keyfile verified)`);
+        return isValid;
+      }
+    }
+  } catch (err: any) {
+    console.error('[OCR CONFIG] Error verifying credentials file:', err.message);
+  }
+
+  console.log('[OCR CONFIG] GOOGLE_APPLICATION_CREDENTIALS configured: false (Verification failed)');
+  return false;
 };
 
-// Configure Google Cloud Vision client credentials
-const options: any = {};
-if (process.env.GOOGLE_CLOUD_CLIENT_EMAIL && process.env.GOOGLE_CLOUD_PRIVATE_KEY) {
-  options.credentials = {
-    client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  };
-  options.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
-} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  // Library automatically resolves credentials using GOOGLE_APPLICATION_CREDENTIALS path
-}
-
-// Instantiate Google Vision client (if credentials are set, otherwise initialized lazily)
+// Instantiate Google Vision client (options built dynamically to avoid env loading race conditions)
 const getVisionClient = (() => {
   let client: any = null;
   return () => {
     if (!client && isOcrConfigured()) {
-      client = new vision.ImageAnnotatorClient(options);
+      const options: any = {};
+      if (process.env.GOOGLE_CLOUD_CLIENT_EMAIL && process.env.GOOGLE_CLOUD_PRIVATE_KEY) {
+        options.credentials = {
+          client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
+          private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        };
+        options.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
+      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        // Automatically reads GOOGLE_APPLICATION_CREDENTIALS from resolved environment
+      }
+
+      try {
+        client = new vision.ImageAnnotatorClient(options);
+        console.log('[OCR CONFIG] Vision client initialization: success');
+      } catch (err: any) {
+        console.error('[OCR CONFIG] Vision client initialization: failure', err.message);
+      }
     }
     return client;
   };

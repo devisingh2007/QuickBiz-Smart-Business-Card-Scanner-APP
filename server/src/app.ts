@@ -1,11 +1,9 @@
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import contactRoutes from './routes/contact.routes';
 import ocrRoutes from './routes/ocr.routes';
-
-dotenv.config({ override: true });
 
 const app = express();
 
