@@ -1,67 +1,76 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, SafeAreaView, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, Text, FlatList, SafeAreaView, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ContactCard, ContactData } from '@/components/ui/ContactCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { apiService } from '@/services/api.service';
 
 export default function ContactsScreen() {
+  const router = useRouter();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [contacts, setContacts] = useState<ContactData[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const categories = ['All', 'Client', 'Recruiter', 'Investor', 'Business Partner', 'Friend', 'Other'];
+  const categories = ['All', 'Client', 'Recruiter', 'Investor', 'Developer', 'Business Partner', 'Customer', 'Friend', 'Other'];
 
-  const allContacts: ContactData[] = [
-    {
-      id: '1',
-      name: 'Rahul Sharma',
-      company: 'ABC Technologies',
-      designation: 'Software Engineer',
-      phone: '+91 9876543210',
-      email: 'rahul@abc.com',
-      category: 'Client',
-    },
-    {
-      id: '2',
-      name: 'Priya Patel',
-      company: 'XYZ Solutions',
-      designation: 'Product Manager',
-      phone: '+91 9988776655',
-      email: 'priya@xyz.com',
-      category: 'Business Partner',
-    },
-    {
-      id: '3',
-      name: 'Amit Shah',
-      company: 'Startup Hub',
-      designation: 'Founder & CEO',
-      phone: '+91 8877665544',
-      email: 'amit@startuphub.io',
-      category: 'Investor',
-    },
-    {
-      id: '4',
-      name: 'Neha Gupta',
-      company: 'Tech Recruiting Corp',
-      designation: 'Lead Talent Partner',
-      phone: '+91 7766554433',
-      email: 'neha@techrecruiting.com',
-      category: 'Recruiter',
-    },
-  ];
+  const fetchContacts = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (apiService.isAuthenticated()) {
+        const fetched = await apiService.getContacts(selectedCategory, searchQuery);
+        setContacts(fetched);
+      } else {
+        // Fallback for offline demo
+        const offlineMock: ContactData[] = [
+          {
+            id: '1',
+            name: 'Rahul Sharma (Offline Demo)',
+            company: 'ABC Technologies',
+            designation: 'Software Engineer',
+            phone: '+91 9876543210',
+            email: 'rahul@abc.com',
+            category: 'Client',
+          },
+          {
+            id: '2',
+            name: 'Priya Patel (Offline Demo)',
+            company: 'XYZ Solutions',
+            designation: 'Product Manager',
+            phone: '+91 9988776655',
+            email: 'priya@xyz.com',
+            category: 'Business Partner',
+          }
+        ];
 
-  const filteredContacts = allContacts.filter((contact) => {
-    const matchesSearch =
-      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (contact.designation && contact.designation.toLowerCase().includes(searchQuery.toLowerCase()));
+        // Filter offline mocks locally
+        const filtered = offlineMock.filter(contact => {
+          const matchesSearch = 
+            contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            contact.company.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
+          return matchesSearch && matchesCategory;
+        });
 
-    const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
+        setContacts(filtered);
+      }
+    } catch (err: any) {
+      console.warn('Failed to load contacts:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory, searchQuery]);
 
-    return matchesSearch && matchesCategory;
-  });
+  useFocusEffect(
+    useCallback(() => {
+      fetchContacts();
+    }, [fetchContacts])
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -119,22 +128,31 @@ export default function ContactsScreen() {
       </View>
 
       {/* Contacts List */}
-      <FlatList
-        data={filteredContacts}
-        keyExtractor={(item) => item.id!}
-        renderItem={({ item }) => (
-          <ContactCard
-            contact={item}
-            onPress={() => alert(`Details view for ${item.name}`)}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No contacts found</Text>
-          </View>
-        }
-      />
+      {loading && contacts.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={contacts}
+          keyExtractor={(item) => item.id || item.name}
+          renderItem={({ item }) => (
+            <ContactCard
+              contact={item}
+              onPress={() => router.push({
+                pathname: '/contact-details',
+                params: { ...item }
+              })}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No contacts found</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -199,5 +217,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

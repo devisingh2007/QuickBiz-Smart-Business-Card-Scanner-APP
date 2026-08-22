@@ -1,44 +1,89 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ContactCard, ContactData } from '@/components/ui/ContactCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { apiService, UserProfile } from '@/services/api.service';
 
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
-  const recentContacts: ContactData[] = [
-    {
-      id: '1',
-      name: 'Rahul Sharma',
-      company: 'ABC Technologies',
-      designation: 'Software Engineer',
-      phone: '+91 9876543210',
-      email: 'rahul@abc.com',
-      category: 'Client',
-    },
-    {
-      id: '2',
-      name: 'Priya Patel',
-      company: 'XYZ Solutions',
-      designation: 'Product Manager',
-      phone: '+91 9988776655',
-      email: 'priya@xyz.com',
-      category: 'Business Partner',
-    },
-  ];
+  const [contacts, setContacts] = useState<ContactData[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Reload profile
+      setUserProfile(apiService.getUser());
+      
+      const loadDashboard = async () => {
+        setLoading(true);
+        try {
+          if (apiService.isAuthenticated()) {
+            const fetched = await apiService.getContacts();
+            setContacts(fetched);
+          } else {
+            // Default mock for offline dashboard demo
+            setContacts([
+              {
+                id: '1',
+                name: 'Rahul Sharma (Offline Demo)',
+                company: 'ABC Technologies',
+                designation: 'Software Engineer',
+                phone: '+91 9876543210',
+                email: 'rahul@abc.com',
+                category: 'Client',
+              },
+              {
+                id: '2',
+                name: 'Priya Patel (Offline Demo)',
+                company: 'XYZ Solutions',
+                designation: 'Product Manager',
+                phone: '+91 9988776655',
+                email: 'priya@xyz.com',
+                category: 'Business Partner',
+              }
+            ]);
+          }
+        } catch (err: any) {
+          console.warn('Dashboard fetch failed:', err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadDashboard();
+    }, [])
+  );
+
+  // Compute stats dynamically
+  const totalContacts = contacts.length;
+  const addedThisWeek = contacts.filter((c: any) => {
+    if (!c.createdAt) return true; // Default mock contacts
+    const createdDate = new Date(c.createdAt);
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return createdDate >= oneWeekAgo;
+  }).length;
+
+  const recentContacts = contacts.slice(0, 2);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Welcome Section */}
         <View style={styles.header}>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>Good Morning 👋</Text>
-          <Text style={[styles.title, { color: colors.text }]}>Devisingh Rajput</Text>
+          <Text style={[styles.greeting, { color: colors.textSecondary }]}>
+            {userProfile ? `Welcome Back 👋` : 'Offline Mode 👋'}
+          </Text>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+            {userProfile ? userProfile.name : 'Guest User'}
+          </Text>
         </View>
 
         {/* Scan Hero Card */}
@@ -59,11 +104,19 @@ export default function HomeScreen() {
         {/* Stats Section */}
         <View style={styles.statsContainer}>
           <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>24</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={[styles.statValue, { color: colors.primary }]}>{totalContacts}</Text>
+            )}
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Contacts</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.secondary }]}>8</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.secondary} />
+            ) : (
+              <Text style={[styles.statValue, { color: colors.secondary }]}>{addedThisWeek}</Text>
+            )}
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Added This Week</Text>
           </View>
         </View>
@@ -78,16 +131,24 @@ export default function HomeScreen() {
 
         {/* Recent Contacts List */}
         <View style={styles.recentList}>
-          {recentContacts.map((contact) => (
-            <ContactCard
-              key={contact.id}
-              contact={contact}
-              onPress={() => {
-                // Future contact detail modal/navigation
-                alert(`Viewing details for ${contact.name}`);
-              }}
-            />
-          ))}
+          {loading && contacts.length === 0 ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 12 }} />
+          ) : recentContacts.length > 0 ? (
+            recentContacts.map((contact) => (
+              <ContactCard
+                key={contact.id || contact.name}
+                contact={contact}
+                onPress={() => router.push({
+                  pathname: '/contact-details',
+                  params: { ...contact }
+                })}
+              />
+            ))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={{ color: colors.textMuted, fontSize: 14 }}>No scanned contacts yet.</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -160,6 +221,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
+    justifyContent: 'center',
   },
   statValue: {
     fontSize: 28,
@@ -185,5 +247,10 @@ const styles = StyleSheet.create({
   },
   recentList: {
     gap: 12,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
   },
 });
