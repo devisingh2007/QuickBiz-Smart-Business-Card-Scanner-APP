@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_PORT = 5000;
 
@@ -32,16 +33,45 @@ export interface UserProfile {
   email: string;
 }
 
+const AUTH_STORAGE_KEY = '@quickbiz_auth_session';
+
 class ApiService {
   private token: string | null = null;
   private user: UserProfile | null = null;
   private listeners: (() => void)[] = [];
 
-  // Set the JWT token and user info
-  public setSession(token: string | null, user: UserProfile | null) {
+  // Set the JWT token and user info — persists to AsyncStorage
+  public async setSession(token: string | null, user: UserProfile | null) {
     this.token = token;
     this.user = user;
+    try {
+      if (token && user) {
+        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token, user }));
+      } else {
+        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    } catch (err) {
+      console.warn('[AUTH] Failed to persist session:', err);
+    }
     this.notifyListeners();
+  }
+
+  // Restore session from AsyncStorage on app startup
+  public async restoreSession(): Promise<boolean> {
+    try {
+      const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+      if (stored) {
+        const { token, user } = JSON.parse(stored);
+        this.token = token;
+        this.user = user;
+        console.log('[AUTH] Session restored from storage');
+        this.notifyListeners();
+        return true;
+      }
+    } catch (err) {
+      console.warn('[AUTH] Failed to restore session:', err);
+    }
+    return false;
   }
 
   // Get current user profile
@@ -116,8 +146,8 @@ class ApiService {
   }
 
   // Auth: Logout
-  public logout() {
-    this.setSession(null, null);
+  public async logout() {
+    await this.setSession(null, null);
   }
 
   // Contacts: Create
@@ -203,16 +233,37 @@ class ApiService {
 
   // OCR: Scan business card
   public async performOcr(base64Image: string) {
-    const response = await fetch(`${BASE_URL}/ocr/business-card`, {
+    const tokenPresent = this.token !== null;
+    console.log(`[AUTH] Token exists: ${tokenPresent}`);
+    console.log(`[AUTH] Token length: ${this.token?.length ?? 0}`);
+    console.log(`[AUTH] OCR request authenticated: ${tokenPresent}`);
+
+    const url = `${BASE_URL}/ocr/business-card`;
+    console.log(`[OCR] Upload URL: ${url}`);
+    console.log('[OCR] Request started');
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ image: base64Image }),
     });
 
+    console.log(`[OCR] Response status: ${response.status}`);
     const data = await response.json();
+
+    if (response.status === 401) {
+      throw new Error('SESSION_EXPIRED');
+    }
+    if (response.status === 403) {
+      throw new Error('OCR_FORBIDDEN');
+    }
+    if (response.status === 503) {
+      throw new Error('OCR_UNAVAILABLE');
+    }
     if (!response.ok) {
       throw new Error(data.error?.message || data.message || 'OCR extraction failed');
     }
+    console.log('[OCR] OCR response received');
     return data.ocr; // returns { rawText, blocks, lines, confidence }
   }
 

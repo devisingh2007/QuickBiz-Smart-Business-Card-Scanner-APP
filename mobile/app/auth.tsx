@@ -65,9 +65,9 @@ export default function AuthScreen() {
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     // Proceed to permissions and run in offline mode
-    apiService.setSession(null, null);
+    await apiService.setSession(null, null);
     router.replace('/permissions');
   };
 

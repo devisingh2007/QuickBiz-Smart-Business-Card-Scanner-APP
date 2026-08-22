@@ -135,7 +135,26 @@ export default function ScanScreen() {
       setScanState('scan');
     } catch (error: any) {
       console.error('[OCR] Extraction Failed:', error.message);
-      Alert.alert('OCR Error', error.message || 'Couldn\'t read this business card. Please enter manually.', [
+
+      // Map typed error codes to user-friendly messages
+      let alertTitle = 'OCR Error';
+      let alertMessage = 'Couldn\'t read this business card. Please enter manually.';
+
+      if (error.message === 'SESSION_EXPIRED') {
+        alertTitle = 'Session Expired';
+        alertMessage = 'Your session has expired. Please sign in again.';
+      } else if (error.message === 'OCR_FORBIDDEN') {
+        alertTitle = 'Access Denied';
+        alertMessage = 'You don\'t have permission to use OCR.';
+      } else if (error.message === 'OCR_UNAVAILABLE') {
+        alertTitle = 'OCR Unavailable';
+        alertMessage = 'OCR service is currently unavailable. Please try again later.';
+      } else if (error.message?.toLowerCase().includes('network') || error.message?.toLowerCase().includes('fetch')) {
+        alertTitle = 'Network Error';
+        alertMessage = 'Unable to reach the OCR server. Check your connection.';
+      }
+
+      Alert.alert(alertTitle, alertMessage, [
         {
           text: 'Enter Manually',
           onPress: () => {
