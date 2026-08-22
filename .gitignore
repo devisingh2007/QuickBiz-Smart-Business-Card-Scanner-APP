@@ -57,3 +57,10 @@ yarn-error.*
 # Agent/AI files
 .claude/
 .agents/
+AGENTS.md
+CLAUDE.md
+AppFlow.md
+Implementation_Plan.md
+Technical_Design.md
+UX_DesignBrief.md
+PRD.md
