@@ -72,11 +72,15 @@ const runTests = async () => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(contactData),
+      body: JSON.stringify({ ...contactData, extractionQualityScore: 92 }),
     });
     const createData: any = await createRes.json();
     if (createRes.ok && createData.success) {
       console.log('✓ Contact Created Successfully! ID:', createData.contact._id);
+      console.log('✓ Verified Extraction Quality Score:', createData.contact.extractionQualityScore);
+      if (createData.contact.extractionQualityScore !== 92) {
+        throw new Error(`Extraction Quality Score mismatch. Expected 92, got ${createData.contact.extractionQualityScore}`);
+      }
       contactId = createData.contact._id;
     } else {
       throw new Error(`Contact Creation Failed: ${JSON.stringify(createData)}`);
@@ -140,6 +144,38 @@ const runTests = async () => {
       console.log('✓ Contact Deleted Successfully!');
     } else {
       throw new Error(`Contact Deletion Failed: ${JSON.stringify(deleteData)}`);
+    }
+
+    // 8. Test Account Deletion
+    console.log('\n[Test 8] Account Deletion...');
+    const deleteAccRes = await fetch(`${BASE_URL}/auth/account`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const deleteAccData: any = await deleteAccRes.json();
+    if (deleteAccRes.ok && deleteAccData.success) {
+      console.log('✓ Account Deleted Successfully!');
+    } else {
+      throw new Error(`Account Deletion Failed: ${JSON.stringify(deleteAccData)}`);
+    }
+
+    // 9. Verify user can no longer login
+    console.log('\n[Test 9] Login after deletion (should fail)...');
+    const reloginRes = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testEmail,
+        password: testPassword,
+      }),
+    });
+    const reloginData: any = await reloginRes.json();
+    if (reloginRes.status === 401) {
+      console.log('✓ Login correctly rejected after deletion!');
+    } else {
+      throw new Error(`Expected login to fail, got status ${reloginRes.status}: ${JSON.stringify(reloginData)}`);
     }
 
     console.log('\n--- ALL API TESTS COMPLETED SUCCESSFULLY ---');
