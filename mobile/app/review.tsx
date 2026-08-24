@@ -9,6 +9,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { apiService } from '@/services/api.service';
 import { contactStore } from '@/services/contact.store';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { CATEGORIES } from '@/constants/categories';
 
 export default function ReviewScreen() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function ReviewScreen() {
   const [company, setCompany] = useState((params.company as string) || '');
   const [designation, setDesignation] = useState((params.designation as string) || '');
   const [officeAddress, setOfficeAddress] = useState((params.officeAddress as string) || '');
-  const [category, setCategory] = useState<any>((params.category as string) || 'Client');
+  const [category, setCategory] = useState<any>((params.category as string) || 'Other');
 
   // Load and format multi-value parameter arrays
   const [phones, setPhones] = useState<{ value: string; type: string; label: string }[]>(() => {
@@ -29,7 +30,7 @@ export default function ReviewScreen() {
       try {
         const parsed = JSON.parse(params.phonesJson as string);
         if (parsed.length > 0) return parsed;
-      } catch (e) {}
+      } catch {}
     }
     if (params.phone) {
       return [{ value: params.phone as string, type: 'mobile', label: 'Mobile' }];
@@ -42,7 +43,7 @@ export default function ReviewScreen() {
       try {
         const parsed = JSON.parse(params.emailsJson as string);
         if (parsed.length > 0) return parsed;
-      } catch (e) {}
+      } catch {}
     }
     if (params.email) {
       return [{ value: params.email as string, type: 'work' }];
@@ -55,7 +56,7 @@ export default function ReviewScreen() {
       try {
         const parsed = JSON.parse(params.websitesJson as string);
         if (parsed.length > 0) return parsed;
-      } catch (e) {}
+      } catch {}
     }
     if (params.website) {
       return [{ value: params.website as string, type: 'work' }];
@@ -68,7 +69,7 @@ export default function ReviewScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const categories = ['Client', 'Recruiter', 'Investor', 'Developer', 'Business Partner', 'Customer', 'Friend', 'Other'];
+  const categories = CATEGORIES;
 
   const validate = () => {
     const tempErrors: { [key: string]: string } = {};
@@ -142,18 +143,45 @@ export default function ReviewScreen() {
     }
   };
 
-  const handleSave = async (force = false) => {
-    if (!validate()) return;
-    setLoading(true);
-
+  const updateNativeContact = async (nativeId: string): Promise<boolean> => {
     try {
-      let nativeContactId: string | null = null;
-      
-      // Try to save native contact first (local-first approach)
-      if (Platform.OS !== 'web') {
-        nativeContactId = await saveNativeContact();
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        return false;
       }
 
+      const contactFields: any = {
+        id: nativeId,
+        firstName: name.split(' ')[0] || '',
+        lastName: name.split(' ').slice(1).join(' ') || '',
+        phoneNumbers: phones.filter((p) => p.value).map((p) => ({ label: p.label.toLowerCase(), number: p.value })),
+        emails: emails.filter((e) => e.value).map((e) => ({ label: e.type.toLowerCase(), email: e.value })),
+        company: company || '',
+        jobTitle: designation || '',
+        addresses: officeAddress ? [{ label: 'work', street: officeAddress }] : [],
+        urlAddresses: websites.filter((w) => w.value).map((w) => ({ label: w.type.toLowerCase(), url: w.value })),
+      };
+
+      await Contacts.updateContactAsync(contactFields);
+      return true;
+    } catch (err: any) {
+      console.warn('Native contact update failed:', err.message || err);
+      return false;
+    }
+  };
+
+  const nativeContactExists = async (nativeId: string): Promise<boolean> => {
+    try {
+      const contact = await Contacts.getContactByIdAsync(nativeId);
+      return !!contact;
+    } catch {
+      return false;
+    }
+  };
+
+  const proceedSave = async (nativeContactId: string | undefined, force: boolean) => {
+    setLoading(true);
+    try {
       const contactData = {
         id: (params.id as string) || undefined,
         name,
@@ -184,7 +212,7 @@ export default function ReviewScreen() {
             result.message || 'This contact might already exist in your directory. Do you want to save it anyway?',
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Save Anyway', onPress: () => handleSave(true) }
+              { text: 'Save Anyway', onPress: () => proceedSave(nativeContactId, true) }
             ]
           );
           return;
@@ -202,7 +230,71 @@ export default function ReviewScreen() {
         router.replace('/(tabs)');
       }
     } catch (error: any) {
-      Alert.alert('Save Error', error.message || 'Failed to save contact. Stored locally.');
+      Alert.alert('Save Error', error.message || 'Failed to save contact.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (force = false) => {
+    if (!validate()) return;
+    setLoading(true);
+
+    try {
+      let nativeContactId = (params.nativeContactId as string) || undefined;
+      
+      if (Platform.OS !== 'web') {
+        if (params.id && nativeContactId) {
+          const updated = await updateNativeContact(nativeContactId);
+          if (!updated) {
+            setLoading(false);
+            const exists = await nativeContactExists(nativeContactId);
+            if (!exists) {
+              Alert.alert(
+                'Link Broken',
+                'The linked contact on your device no longer exists. Create a new one or continue without link?',
+                [
+                  {
+                    text: 'Create New Link',
+                    onPress: async () => {
+                      setLoading(true);
+                      const newNativeId = await saveNativeContact();
+                      await proceedSave(newNativeId || undefined, force);
+                    }
+                  },
+                  {
+                    text: 'Continue Without Link',
+                    onPress: async () => {
+                      await proceedSave(undefined, force);
+                    }
+                  },
+                  {
+                    text: 'Cancel',
+                    style: 'cancel'
+                  }
+                ]
+              );
+              return;
+            } else {
+              Alert.alert(
+                'Device Update Failed',
+                'Failed to update the contact on your device. Please verify contacts permissions.',
+                [
+                  { text: 'Save Locally Only', onPress: () => proceedSave(nativeContactId, force) },
+                  { text: 'Cancel', style: 'cancel' }
+                ]
+              );
+              return;
+            }
+          }
+        } else {
+          nativeContactId = await saveNativeContact() || undefined;
+        }
+      }
+
+      await proceedSave(nativeContactId, force);
+    } catch (error: any) {
+      Alert.alert('Save Error', error.message || 'Failed to save contact.');
       router.replace('/(tabs)');
     } finally {
       setLoading(false);
