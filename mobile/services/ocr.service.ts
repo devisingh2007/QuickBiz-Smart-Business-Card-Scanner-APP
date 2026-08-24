@@ -1,7 +1,13 @@
-import { recognizeText } from 'expo-mlkit-ocr';
 import { Platform } from 'react-native';
 import { contactParserService } from './contact-parser.service';
 import { ContactData } from '@/components/ui/ContactCard';
+
+let recognizeText: any = null;
+try {
+  recognizeText = require('expo-mlkit-ocr').recognizeText;
+} catch (e: any) {
+  console.warn('[OCR] expo-mlkit-ocr native module not available in this client environment:', e.message);
+}
 
 // ─── Types (matches expo-mlkit-ocr RecognitionResult) ──────────────────────────
 export interface MlKitOcrResult {
@@ -35,6 +41,11 @@ class OcrService {
     }
 
     console.log('[OCR] ML Kit OCR started (on-device)');
+
+    if (!recognizeText) {
+      console.error('[OCR] recognizeText is not loaded. Safe mode fallback.');
+      throw new Error('OCR_ENGINE_ERROR');
+    }
 
     let recognition;
     try {
