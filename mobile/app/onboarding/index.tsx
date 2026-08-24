@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -13,16 +14,25 @@ export default function OnboardingScreen() {
   const colors = Colors[theme];
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('@quickbiz_onboarded', 'true');
+    } catch (e) {
+      console.warn('Failed to save onboarding state:', e);
+    }
+    router.push('/auth');
+  };
+
   const handleNext = () => {
     if (currentSlide < 2) {
       setCurrentSlide(currentSlide + 1);
     } else {
-      router.push('/auth');
+      completeOnboarding();
     }
   };
 
   const handleSkip = () => {
-    router.push('/auth');
+    completeOnboarding();
   };
 
   const handleBack = () => {

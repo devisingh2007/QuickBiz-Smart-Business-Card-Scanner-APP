@@ -43,23 +43,3 @@ export const Colors = {
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: 'System',
-    serif: 'Georgia',
-    rounded: 'System',
-    mono: 'Courier',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-  },
-});

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Alert, Platform, Linking, AppState, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Camera } from 'expo-camera';
+import * as Contacts from 'expo-contacts';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -11,22 +13,103 @@ export default function PermissionScreen() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
-  // State to simulate permission requests
-  const [cameraGranted, setCameraGranted] = useState<boolean | null>(null);
-  const [contactsGranted, setContactsGranted] = useState<boolean | null>(null);
+  const [cameraStatus, setCameraStatus] = useState<string>('undetermined');
+  const [cameraCanAskAgain, setCameraCanAskAgain] = useState(true);
 
-  const requestCamera = () => {
-    // Mock granting camera permission
-    setCameraGranted(true);
+  const [contactsStatus, setContactsStatus] = useState<string>('undetermined');
+  const [contactsCanAskAgain, setContactsCanAskAgain] = useState(true);
+
+  const [loading, setLoading] = useState(true);
+
+  const checkPermissions = async () => {
+    if (Platform.OS === 'web') {
+      setCameraStatus('granted');
+      setContactsStatus('granted');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const cam = await Camera.getCameraPermissionsAsync();
+      setCameraStatus(cam.status);
+      setCameraCanAskAgain(cam.canAskAgain);
+
+      const con = await Contacts.getPermissionsAsync();
+      setContactsStatus(con.status);
+      setContactsCanAskAgain(con.canAskAgain);
+    } catch (err) {
+      console.warn('[PERMISSIONS] checkPermissions failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const requestContacts = () => {
-    // Mock granting contacts permission
-    setContactsGranted(true);
+  useEffect(() => {
+    checkPermissions();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkPermissions();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const requestCamera = async () => {
+    if (Platform.OS === 'web') return;
+
+    if (cameraStatus === 'denied' && !cameraCanAskAgain) {
+      Alert.alert(
+        'Camera Permission Blocked',
+        'Camera access is blocked. Please enable it in your device system settings to scan business cards.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() }
+        ]
+      );
+      return;
+    }
+
+    try {
+      const res = await Camera.requestCameraPermissionsAsync();
+      setCameraStatus(res.status);
+      setCameraCanAskAgain(res.canAskAgain);
+    } catch (err) {
+      console.warn('[PERMISSIONS] requestCamera failed:', err);
+      Alert.alert('Error', 'Failed to request camera permission.');
+    }
+  };
+
+  const requestContacts = async () => {
+    if (Platform.OS === 'web') return;
+
+    if (contactsStatus === 'denied' && !contactsCanAskAgain) {
+      Alert.alert(
+        'Contacts Permission Blocked',
+        'Contacts access is blocked. Please enable it in your device system settings to save business cards to your phone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() }
+        ]
+      );
+      return;
+    }
+
+    try {
+      const res = await Contacts.requestPermissionsAsync();
+      setContactsStatus(res.status);
+      setContactsCanAskAgain(res.canAskAgain);
+    } catch (err) {
+      console.warn('[PERMISSIONS] requestContacts failed:', err);
+      Alert.alert('Error', 'Failed to request contacts permission.');
+    }
   };
 
   const handleContinue = () => {
-    if (cameraGranted && contactsGranted) {
+    if (cameraStatus === 'granted' && contactsStatus === 'granted') {
       router.replace('/(tabs)');
     } else {
       Alert.alert(
@@ -39,6 +122,15 @@ export default function PermissionScreen() {
       );
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: colors.textSecondary, marginTop: 12, fontWeight: '500' }}>Checking permissions...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -62,13 +154,33 @@ export default function PermissionScreen() {
             </View>
             <TouchableOpacity
               onPress={requestCamera}
+              disabled={cameraStatus === 'granted'}
               style={[
                 styles.statusBadge,
-                cameraGranted === true ? { backgroundColor: colors.primaryLight } : { borderColor: colors.primary, borderWidth: 1 }
+                cameraStatus === 'granted'
+                  ? { backgroundColor: colors.primaryLight }
+                  : cameraStatus === 'denied' && !cameraCanAskAgain
+                  ? { borderColor: colors.warning, borderWidth: 1 }
+                  : { borderColor: colors.primary, borderWidth: 1 }
               ]}
             >
-              <Text style={[styles.badgeText, { color: cameraGranted === true ? colors.primary : colors.primary }]}>
-                {cameraGranted === true ? 'Granted ✓' : 'Grant'}
+              <Text
+                style={[
+                  styles.badgeText,
+                  {
+                    color: cameraStatus === 'granted'
+                      ? colors.primary
+                      : cameraStatus === 'denied' && !cameraCanAskAgain
+                      ? colors.warning
+                      : colors.primary
+                  }
+                ]}
+              >
+                {cameraStatus === 'granted'
+                  ? 'Granted ✓'
+                  : cameraStatus === 'denied' && !cameraCanAskAgain
+                  ? 'Blocked'
+                  : 'Grant'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -86,13 +198,33 @@ export default function PermissionScreen() {
             </View>
             <TouchableOpacity
               onPress={requestContacts}
+              disabled={contactsStatus === 'granted'}
               style={[
                 styles.statusBadge,
-                contactsGranted === true ? { backgroundColor: colors.primaryLight } : { borderColor: colors.primary, borderWidth: 1 }
+                contactsStatus === 'granted'
+                  ? { backgroundColor: colors.primaryLight }
+                  : contactsStatus === 'denied' && !contactsCanAskAgain
+                  ? { borderColor: colors.warning, borderWidth: 1 }
+                  : { borderColor: colors.primary, borderWidth: 1 }
               ]}
             >
-              <Text style={[styles.badgeText, { color: contactsGranted === true ? colors.primary : colors.primary }]}>
-                {contactsGranted === true ? 'Granted ✓' : 'Grant'}
+              <Text
+                style={[
+                  styles.badgeText,
+                  {
+                    color: contactsStatus === 'granted'
+                      ? colors.primary
+                      : contactsStatus === 'denied' && !contactsCanAskAgain
+                      ? colors.warning
+                      : colors.primary
+                  }
+                ]}
+              >
+                {contactsStatus === 'granted'
+                  ? 'Granted ✓'
+                  : contactsStatus === 'denied' && !contactsCanAskAgain
+                  ? 'Blocked'
+                  : 'Grant'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -101,7 +233,7 @@ export default function PermissionScreen() {
 
       <View style={styles.footer}>
         <PrimaryButton
-          title={cameraGranted && contactsGranted ? 'Continue' : 'Continue in Limited Mode'}
+          title={cameraStatus === 'granted' && contactsStatus === 'granted' ? 'Continue' : 'Continue in Limited Mode'}
           onPress={handleContinue}
           style={styles.button}
         />

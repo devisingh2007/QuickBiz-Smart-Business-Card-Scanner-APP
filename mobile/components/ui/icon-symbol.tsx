@@ -30,6 +30,8 @@ const MAPPING = {
   'doc.on.doc.fill': 'content-copy',
   'globe': 'public',
   'building.2.fill': 'business',
+  'minus.circle.fill': 'remove-circle',
+  'arrow.up.right.square': 'open-in-new',
 } as IconMapping;
 
 /**

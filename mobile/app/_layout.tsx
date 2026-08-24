@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiService } from '@/services/api.service';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -34,18 +35,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding/index" />
-        <Stack.Screen name="auth" />
-        <Stack.Screen name="permissions/index" />
-        <Stack.Screen name="review" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="contact-details" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="onboarding/index" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="permissions/index" />
+          <Stack.Screen name="review" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="contact-details" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
