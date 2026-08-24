@@ -1,12 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ActivityIndicator, Image, Alert, Platform } from 'react-native';
+import {
+  StyleSheet, View, Text, SafeAreaView,
+  TouchableOpacity, ActivityIndicator, Image, Alert, Platform,
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { apiService } from '@/services/api.service';
 import { ocrService } from '@/services/ocr.service';
 
 export default function ScanScreen() {
@@ -15,110 +18,80 @@ export default function ScanScreen() {
   const colors = Colors[theme];
 
   const cameraRef = useRef<any>(null);
-  const photoBase64Ref = useRef<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
 
   const [scanState, setScanState] = useState<'scan' | 'preview' | 'ocr'>('scan');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const isWebPlatform = Platform.OS === 'web';
 
+  const handleEnterManually = async () => {
+    try {
+      const defaultCategory = await AsyncStorage.getItem('@quickbiz_default_category') || 'Other';
+      router.push({
+        pathname: '/review',
+        params: { category: defaultCategory }
+      });
+    } catch {
+      router.push('/review');
+    }
+  };
+
+  // ── Capture ────────────────────────────────────────────────────────────────
   const handleCapture = async () => {
-    if (cameraRef.current) {
-      try {
-        console.log('[SCANNER] cameraReady: true');
-        console.log('[SCANNER] permissionStatus: granted');
-        console.log('[SCANNER] captureStarted: true');
-        
-        const startTime = Date.now();
-        // Capture using optimal high-resolution settings (quality: 0.8)
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: true,
-          skipProcessing: false,
-        });
-        
-        const captureTime = Date.now() - startTime;
+    if (!cameraRef.current) return;
+    try {
+      console.log('[SCANNER] cameraReady: true');
+      console.log('[SCANNER] permissionStatus: granted');
+      console.log('[SCANNER] captureStarted: true');
 
-        if (photo && photo.uri) {
-          photoBase64Ref.current = photo.base64 || null;
-          setPhotoUri(photo.uri);
-          
-          console.log('[SCANNER] captureCompleted: true');
-          console.log(`[SCANNER] imageUri: ${photo.uri}`);
-          console.log(`[SCANNER] imageWidth: ${photo.width}`);
-          console.log(`[SCANNER] imageHeight: ${photo.height}`);
-          console.log(`[SCANNER] base64Length: ${photo.base64?.length || 0}`);
-          console.log(`[SCANNER] processingTime: ${captureTime}ms`);
+      const startTime = Date.now();
+      // base64 not needed — ML Kit reads directly from the file URI
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        skipProcessing: false,
+      });
+      const captureTime = Date.now() - startTime;
 
-          setScanState('preview');
-        }
-      } catch (err: any) {
-        console.error('[SCANNER] Image Capture failed:', err.message);
-        Alert.alert('Capture Error', 'Failed to take business card photo. Please enter details manually.', [
-          { text: 'Enter Manually', onPress: () => router.push('/review') },
-          { text: 'Cancel', style: 'cancel' }
-        ]);
+      if (photo?.uri) {
+        setPhotoUri(photo.uri);
+        console.log('[SCANNER] captureCompleted: true');
+        console.log('[SCANNER] imageUri: valid');
+        console.log(`[SCANNER] imageWidth: ${photo.width}`);
+        console.log(`[SCANNER] imageHeight: ${photo.height}`);
+        console.log(`[SCANNER] processingTime: ${captureTime}ms`);
+        setScanState('preview');
       }
+    } catch (err: any) {
+      console.error('[SCANNER] Image Capture failed:', err.message);
+      Alert.alert(
+        'Capture Error',
+        'Failed to take business card photo. Please enter details manually.',
+        [
+          { text: 'Enter Manually', onPress: handleEnterManually },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+      );
     }
   };
 
   const handleRetake = () => {
     setPhotoUri(null);
-    photoBase64Ref.current = null;
     setScanState('scan');
   };
 
+  // ── OCR — on-device ML Kit, no network ────────────────────────────────────
   const handleUsePhoto = async () => {
-    if (!photoUri || !photoBase64Ref.current) return;
-
+    if (!photoUri) return;
     setScanState('ocr');
 
     try {
-      // 1. Diagnose backend OCR Configuration first
-      console.log('[OCR] Verifying backend credentials configuration...');
-      const health = await apiService.checkOcrHealth();
-      
-      if (!health.configured) {
-        console.warn('[WARN] [OCR] Gateway config health check failed.');
-        
-        let alertTitle = 'OCR Unconfigured';
-        let alertMessage = 'OCR service is temporarily unavailable. Please enter details manually.';
+      console.log('[OCR] Starting on-device ML Kit OCR...');
+      const { parsedData } = await ocrService.processImage(photoUri);
+      const defaultCategory = await AsyncStorage.getItem('@quickbiz_default_category') || 'Other';
 
-        if (health.code === 'NETWORK_ERROR') {
-          alertTitle = 'Server Unreachable';
-          alertMessage = 'Unable to connect to the OCR server. Please ensure the backend is running and your device is on the same local network.';
-        } else if (health.code === 'OCR_CREDENTIALS_MISSING') {
-          alertTitle = 'OCR Credentials Missing';
-          alertMessage = 'OCR service is not configured on the server. Please check environment variables or enter details manually.';
-        }
-
-        Alert.alert(
-          alertTitle,
-          alertMessage,
-          [
-            {
-              text: 'Enter Manually',
-              onPress: () => {
-                router.push('/review');
-                setPhotoUri(null);
-                photoBase64Ref.current = null;
-                setScanState('scan');
-              }
-            },
-            { text: 'Cancel', style: 'cancel', onPress: () => setScanState('preview') }
-          ]
-        );
-        return;
-      }
-
-      // 2. Perform safe base64 OCR upload
-      console.log('[OCR] Starting OCR Upload to gateway server...');
-      const { parsedData } = await ocrService.processImage(photoUri, photoBase64Ref.current);
-      
-      // 3. Navigate directly to review screen with parsed multi-value contact details
       router.push({
         pathname: '/review',
-        params: { 
+        params: {
           name: parsedData.name || '',
           company: parsedData.company || '',
           designation: parsedData.designation || '',
@@ -126,74 +99,80 @@ export default function ScanScreen() {
           phonesJson: JSON.stringify(parsedData.phones || []),
           emailsJson: JSON.stringify(parsedData.emails || []),
           websitesJson: JSON.stringify(parsedData.websites || []),
-          extractionQualityScore: String(parsedData.extractionQualityScore || 0)
+          extractionQualityScore: String(parsedData.extractionQualityScore || 0),
+          category: defaultCategory,
         },
       });
-      
+
       setPhotoUri(null);
-      photoBase64Ref.current = null;
       setScanState('scan');
     } catch (error: any) {
-      console.error('[OCR] Extraction Failed:', error.message);
+      console.error('[OCR] ML Kit OCR failed:', error.message);
 
-      // Map typed error codes to user-friendly messages
-      let alertTitle = 'OCR Error';
-      let alertMessage = 'Couldn\'t read this business card. Please enter manually.';
+      let alertTitle = "Couldn't Read Card";
+      let alertMessage =
+        "Couldn't read this business card. Please try again or enter details manually.";
 
-      if (error.message === 'SESSION_EXPIRED') {
-        alertTitle = 'Session Expired';
-        alertMessage = 'Your session has expired. Please sign in again.';
-      } else if (error.message === 'OCR_FORBIDDEN') {
-        alertTitle = 'Access Denied';
-        alertMessage = 'You don\'t have permission to use OCR.';
-      } else if (error.message === 'OCR_UNAVAILABLE') {
-        alertTitle = 'OCR Unavailable';
-        alertMessage = 'OCR service is currently unavailable. Please try again later.';
-      } else if (error.message?.toLowerCase().includes('network') || error.message?.toLowerCase().includes('fetch')) {
-        alertTitle = 'Network Error';
-        alertMessage = 'Unable to reach the OCR server. Check your connection.';
+      if (error.message === 'OCR_NO_TEXT') {
+        alertTitle = 'No Text Found';
+        alertMessage =
+          'No text could be detected on this card. Make sure the card is well-lit and the text is clearly in focus.';
+      } else if (error.message === 'OCR_NOT_SUPPORTED_ON_WEB') {
+        alertTitle = 'Not Supported';
+        alertMessage = 'Card scanning is not supported on web. Please enter details manually.';
+      } else if (error.message === 'OCR_ENGINE_ERROR') {
+        alertTitle = 'Scanner Error';
+        alertMessage =
+          'The text recognition engine encountered an error. Please retake the photo.';
       }
 
       Alert.alert(alertTitle, alertMessage, [
         {
           text: 'Enter Manually',
-          onPress: () => {
-            router.push('/review');
+          onPress: async () => {
+            await handleEnterManually();
             setPhotoUri(null);
-            photoBase64Ref.current = null;
             setScanState('scan');
-          }
+          },
         },
-        { text: 'Retry', onPress: () => setScanState('preview') }
+        { text: 'Retry', onPress: () => setScanState('preview') },
+        {
+          text: 'Retake',
+          onPress: () => {
+            setPhotoUri(null);
+            setScanState('scan');
+          },
+        },
       ]);
     }
   };
 
-  // Render Manual Entry Mode landing UI
-  const renderManualEntryLanding = (title: string, message: string) => {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-        <IconSymbol name="camera.fill" size={64} color="#94A3B8" style={{ marginBottom: 20 }} />
-        <Text style={[styles.permissionTitle, { color: '#FFFFFF' }]}>{title}</Text>
-        <Text style={styles.permissionSub}>{message}</Text>
-        <PrimaryButton 
-          title="Enter Details Manually" 
-          onPress={() => router.push('/review')} 
-          style={styles.permissionBtn} 
-        />
-        {!isWebPlatform && (
-          <TouchableOpacity onPress={requestPermission} style={{ marginTop: 24 }}>
-            <Text style={{ color: colors.primary, fontWeight: '600' }}>Grant Camera Permissions</Text>
-          </TouchableOpacity>
-        )}
-      </SafeAreaView>
-    );
-  };
+  // ── Manual-entry fallback UI ───────────────────────────────────────────────
+  const renderManualEntryLanding = (title: string, message: string) => (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center', padding: 24 }]}
+    >
+      <IconSymbol name="camera.fill" size={64} color="#94A3B8" style={{ marginBottom: 20 }} />
+      <Text style={[styles.permissionTitle, { color: '#FFFFFF' }]}>{title}</Text>
+      <Text style={styles.permissionSub}>{message}</Text>
+      <PrimaryButton
+        title="Enter Details Manually"
+        onPress={handleEnterManually}
+        style={styles.permissionBtn}
+      />
+      {!isWebPlatform && (
+        <TouchableOpacity onPress={requestPermission} style={{ marginTop: 24 }}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Grant Camera Permissions</Text>
+        </TouchableOpacity>
+      )}
+    </SafeAreaView>
+  );
 
+  // ── Guards ─────────────────────────────────────────────────────────────────
   if (isWebPlatform) {
     return renderManualEntryLanding(
       'Manual Entry Mode',
-      'Card scanning is disabled in web browsers. Tap the button below to enter contact details directly.'
+      'Card scanning is disabled in web browsers. Tap the button below to enter contact details directly.',
     );
   }
 
@@ -209,20 +188,22 @@ export default function ScanScreen() {
   if (!permission.granted) {
     return renderManualEntryLanding(
       'Manual Entry Mode',
-      'Camera access is disabled. Please grant camera permission to scan business cards or use Manual Entry Mode.'
+      'Camera access is disabled. Please grant camera permission to scan business cards or use Manual Entry Mode.',
     );
   }
 
+  // ── Main UI ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19' }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Scan Business Card</Text>
-        <TouchableOpacity onPress={() => router.push('/review')} style={styles.toggleSimBtn}>
+        <TouchableOpacity onPress={handleEnterManually} style={styles.toggleSimBtn}>
           <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>Manual Entry</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Camera / Scan state */}
       {scanState === 'scan' && (
         <View style={{ flex: 1 }}>
           <CameraView style={styles.camera} ref={cameraRef}>
@@ -237,7 +218,6 @@ export default function ScanScreen() {
 
           <Text style={styles.instructionText}>Place the entire card inside the frame.</Text>
 
-          {/* Capture Control Button */}
           <View style={styles.controlsContainer}>
             <TouchableOpacity onPress={handleCapture} style={styles.captureOuterCircle}>
               <View style={styles.captureInnerCircle} />
@@ -246,34 +226,41 @@ export default function ScanScreen() {
         </View>
       )}
 
+      {/* Preview state */}
       {scanState === 'preview' && (
         <View style={{ flex: 1 }}>
           <View style={styles.viewFinderContainer}>
             {photoUri && <Image source={{ uri: photoUri }} style={styles.previewImage} />}
           </View>
-          
+
           <Text style={styles.instructionText}>Confirm if the photo is sharp and readable.</Text>
 
-          {/* Preview Controls */}
           <View style={styles.previewControls}>
-            <TouchableOpacity onPress={handleRetake} style={[styles.previewButton, { borderColor: '#FFFFFF', borderWidth: 1 }]}>
+            <TouchableOpacity
+              onPress={handleRetake}
+              style={[styles.previewButton, { borderColor: '#FFFFFF', borderWidth: 1 }]}
+            >
               <Text style={styles.previewButtonText}>Retake</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleUsePhoto} style={[styles.previewButton, { backgroundColor: colors.primary }]}>
+            <TouchableOpacity
+              onPress={handleUsePhoto}
+              style={[styles.previewButton, { backgroundColor: colors.primary }]}
+            >
               <Text style={[styles.previewButtonText, { color: '#FFFFFF' }]}>Use Photo</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
+      {/* OCR processing state */}
       {scanState === 'ocr' && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingTitle}>Analyzing Business Card...</Text>
-          <Text style={styles.loadingSub}>Extracting contact information using OCR</Text>
-          
+          <Text style={styles.loadingSub}>Extracting contact information on-device</Text>
+
           <View style={styles.ocrStatusList}>
-            <Text style={styles.ocrStatusItem}>✓ Scanning layout lines...</Text>
+            <Text style={styles.ocrStatusItem}>✓ Running ML Kit OCR...</Text>
             <Text style={styles.ocrStatusItem}>✓ Reconstructing text structures...</Text>
             <Text style={styles.ocrStatusItem}>✓ Parsing contact fields...</Text>
           </View>
@@ -284,9 +271,7 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     height: 56,
     flexDirection: 'row',
@@ -296,24 +281,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#FFFFFF' },
   toggleSimBtn: {
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     backgroundColor: '#1E293B',
   },
-  camera: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
+  camera: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   viewFinderContainer: {
     flex: 1,
     alignItems: 'center',
@@ -322,18 +298,14 @@ const styles = StyleSheet.create({
   },
   cardBorder: {
     width: '100%',
-    aspectRatio: 1.586, // standard business card aspect ratio
+    aspectRatio: 1.586,
     borderWidth: 2,
     borderRadius: 16,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  helperTextInside: {
-    color: '#94A3B8',
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  helperTextInside: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
   instructionText: {
     textAlign: 'center',
     color: '#94A3B8',
@@ -380,11 +352,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  previewButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  previewButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
@@ -411,16 +379,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 12,
   },
-  ocrStatusItem: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  permissionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
+  ocrStatusItem: { color: '#FFFFFF', fontSize: 15, fontWeight: '500' },
+  permissionTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
   permissionSub: {
     color: '#94A3B8',
     fontSize: 14,
@@ -428,7 +388,5 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 24,
   },
-  permissionBtn: {
-    width: '100%',
-  },
+  permissionBtn: { width: '100%' },
 });
