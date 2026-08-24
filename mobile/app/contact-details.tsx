@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Colors } from '@/constants/theme';
@@ -37,7 +37,7 @@ export default function ContactDetailsScreen() {
       try {
         const parsed = JSON.parse(params.phonesJson as string);
         if (parsed.length > 0) return parsed;
-      } catch (e) {}
+      } catch {}
     }
     if (params.phone) {
       return [{ value: params.phone as string, type: 'mobile', label: 'Mobile' }];
@@ -50,7 +50,7 @@ export default function ContactDetailsScreen() {
       try {
         const parsed = JSON.parse(params.emailsJson as string);
         if (parsed.length > 0) return parsed;
-      } catch (e) {}
+      } catch {}
     }
     if (params.email) {
       return [{ value: params.email as string, type: 'work' }];
@@ -63,7 +63,7 @@ export default function ContactDetailsScreen() {
       try {
         const parsed = JSON.parse(params.websitesJson as string);
         if (parsed.length > 0) return parsed;
-      } catch (e) {}
+      } catch {}
     }
     if (params.website) {
       return [{ value: params.website as string, type: 'work' }];
@@ -113,11 +113,11 @@ export default function ContactDetailsScreen() {
   const handleDelete = () => {
     Alert.alert(
       'Delete Contact',
-      `Are you sure you want to delete ${name} from QuickBiz?`,
+      `Are you sure you want to delete ${name} from QuickBiz? This will also remove the linked contact from your device's address book.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Delete Everywhere',
           style: 'destructive',
           onPress: async () => {
             try {
