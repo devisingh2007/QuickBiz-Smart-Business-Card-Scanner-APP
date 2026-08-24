@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 export const connectDB = async (): Promise<void> => {
   const connUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/quickbiz';
-  console.log('Connecting to:', connUri);
+  console.log('Connecting to MongoDB...');
   try {
     await mongoose.connect(connUri);
     console.log('MongoDB Connected successfully');

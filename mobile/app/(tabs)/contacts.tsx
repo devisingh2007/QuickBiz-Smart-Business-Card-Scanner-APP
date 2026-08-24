@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { StyleSheet, View, Text, FlatList, SafeAreaView, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/theme';
@@ -7,6 +7,7 @@ import { ContactCard, ContactData } from '@/components/ui/ContactCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { apiService } from '@/services/api.service';
 import { contactStore } from '@/services/contact.store';
+import { CATEGORIES } from '@/constants/categories';
 
 export default function ContactsScreen() {
   const router = useRouter();
@@ -14,11 +15,13 @@ export default function ContactsScreen() {
   const colors = Colors[theme];
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [allContacts, setAllContacts] = useState<ContactData[]>([]);
   const [contacts, setContacts] = useState<ContactData[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const categories = ['All', 'Client', 'Recruiter', 'Investor', 'Developer', 'Business Partner', 'Customer', 'Friend', 'Other'];
+  const categories = ['All', ...CATEGORIES];
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
@@ -36,27 +39,38 @@ export default function ContactsScreen() {
 
       // Fetch from persistent local/sync database cache
       const storedContacts = contactStore.getContacts();
-
-      // Filter locally for fast search and offline rendering
-      const filtered = storedContacts.filter(contact => {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch = 
-          contact.name.toLowerCase().includes(query) ||
-          (contact.company && contact.company.toLowerCase().includes(query)) ||
-          (contact.designation && contact.designation.toLowerCase().includes(query)) ||
-          (contact.email && contact.email.toLowerCase().includes(query));
-
-        const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
-        return matchesSearch && matchesCategory;
-      });
-
-      setContacts(filtered);
+      setAllContacts(storedContacts);
     } catch (err: any) {
       console.warn('Failed to load contacts:', err.message || err);
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory, searchQuery]);
+  }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Perform in-memory filtering of contacts
+  useEffect(() => {
+    const query = debouncedSearchQuery.toLowerCase().trim();
+    const filtered = allContacts.filter(contact => {
+      const matchesSearch = !query || 
+        contact.name.toLowerCase().includes(query) ||
+        (contact.company && contact.company.toLowerCase().includes(query)) ||
+        (contact.designation && contact.designation.toLowerCase().includes(query)) ||
+        (contact.emails || []).some(e => e.value.toLowerCase().includes(query)) ||
+        (contact.phones || []).some(p => p.value.toLowerCase().includes(query));
+
+      const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+    setContacts(filtered);
+  }, [allContacts, selectedCategory, debouncedSearchQuery]);
 
   useFocusEffect(
     useCallback(() => {

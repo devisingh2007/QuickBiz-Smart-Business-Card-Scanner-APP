@@ -70,6 +70,11 @@ const contactSchema = new Schema(
       type: String,
       default: 'business_card',
     },
+    extractionQualityScore: {
+      type: Number,
+      min: [0, 'Extraction quality score must be at least 0'],
+      max: [100, 'Extraction quality score cannot exceed 100'],
+    },
   },
   {
     timestamps: true,
@@ -78,6 +83,7 @@ const contactSchema = new Schema(
 
 // Indexes for fast searching and user-data isolation
 contactSchema.index({ userId: 1 });
+contactSchema.index({ userId: 1, createdAt: -1 });
 contactSchema.index({ 'emails.value': 1 });
 contactSchema.index({ 'phones.value': 1 });
 // Compound text index for name, company, email, phone search queries

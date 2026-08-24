@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { apiService } from '@/services/api.service';
 
 export default function Index() {
   const router = useRouter();
@@ -10,11 +12,29 @@ export default function Index() {
   const colors = Colors[theme];
 
   useEffect(() => {
-    // Automatically redirect to onboarding on launch for the flow demonstration
-    const timer = setTimeout(() => {
-      router.replace('/onboarding');
-    }, 1500); // 1.5 seconds splash display
-    return () => clearTimeout(timer);
+    const checkNavigationFlow = async () => {
+      try {
+        const onboarded = await AsyncStorage.getItem('@quickbiz_onboarded');
+        
+        // Wait for splash screen display duration (1.5 seconds)
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        if (onboarded !== 'true') {
+          router.replace('/onboarding');
+        } else {
+          if (apiService.isAuthenticated()) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/auth');
+          }
+        }
+      } catch (err) {
+        console.warn('[INDEX] Navigation flow check failed:', err);
+        router.replace('/onboarding');
+      }
+    };
+
+    checkNavigationFlow();
   }, [router]);
 
   return (

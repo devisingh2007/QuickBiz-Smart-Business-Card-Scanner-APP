@@ -18,6 +18,9 @@ export interface ContactData {
   websites?: { value: string; type?: string }[];
   category?: 'Client' | 'Recruiter' | 'Investor' | 'Developer' | 'Business Partner' | 'Customer' | 'Friend' | 'Other';
   syncStatus?: 'pending' | 'syncing' | 'synced' | 'failed';
+  syncOperation?: 'create' | 'update' | 'delete';
+  localUpdatedAt?: string;
+  serverUpdatedAt?: string;
   nativeContactId?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -120,13 +123,22 @@ export function ContactCard({ contact, onPress }: ContactCardProps) {
         )}
       </View>
 
-      {contact.category && (
+      {(contact.category || contact.syncStatus === 'pending' || contact.syncStatus === 'failed') && (
         <View style={styles.footer}>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.badgeText, { color: badge.text }]}>
-              {contact.category}
-            </Text>
-          </View>
+          {contact.category && (
+            <View style={[styles.badge, { backgroundColor: badge.bg, marginRight: 8 }]}>
+              <Text style={[styles.badgeText, { color: badge.text }]}>
+                {contact.category}
+              </Text>
+            </View>
+          )}
+          {(contact.syncStatus === 'pending' || contact.syncStatus === 'failed') && (
+            <View style={[styles.badge, { backgroundColor: '#FEF3C7' }]}>
+              <Text style={[styles.badgeText, { color: '#D97706' }]}>
+                ⚠️ Local Only (Pending Backup)
+              </Text>
+            </View>
+          )}
         </View>
       )}
     </TouchableOpacity>

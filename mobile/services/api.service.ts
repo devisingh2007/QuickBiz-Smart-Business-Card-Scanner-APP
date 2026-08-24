@@ -1,31 +1,10 @@
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-const API_PORT = 5000;
-
-// Resolve the correct API base URL depending on the running environment
-const getBaseUrl = (): string => {
-  // Check if we are running in Expo Dev mode
-  if (__DEV__) {
-    // Dynamically retrieve the dev host IP (crucial for physical Expo Go debugging)
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      return `http://${ip}:${API_PORT}/api`;
-    }
-    // Android emulator loopback fallback
-    if (Platform.OS === 'android') {
-      return `http://10.0.2.2:${API_PORT}/api`;
-    }
-    // iOS simulator and Web loopback
-    return `http://127.0.0.1:${API_PORT}/api`;
-  }
-  // Production URL placeholder
-  return 'https://api.quickbiz.dev/api';
-};
-
-export const BASE_URL = getBaseUrl();
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5000/api'; // Android Emulator loopback
+// Fallback for iOS simulator or other networks
+export const DEFAULT_URL = 'http://localhost:5000/api';
 
 export interface UserProfile {
   id: string;
@@ -33,45 +12,66 @@ export interface UserProfile {
   email: string;
 }
 
-const AUTH_STORAGE_KEY = '@quickbiz_auth_session';
-
 class ApiService {
   private token: string | null = null;
   private user: UserProfile | null = null;
-  private listeners: (() => void)[] = [];
+  private initialized = false;
 
-  // Set the JWT token and user info — persists to AsyncStorage
+  // Restore session from Secure Store (mobile) or AsyncStorage (web)
+  public async restoreSession() {
+    if (this.initialized) return;
+    try {
+      let savedToken: string | null = null;
+      let savedUserStr: string | null = null;
+
+      if (Platform.OS === 'web') {
+        savedToken = await AsyncStorage.getItem('@quickbiz_jwt_token');
+        savedUserStr = await AsyncStorage.getItem('@quickbiz_user_profile');
+      } else {
+        savedToken = await SecureStore.getItemAsync('quickbiz_jwt_token');
+        savedUserStr = await SecureStore.getItemAsync('quickbiz_user_profile');
+      }
+
+      if (savedToken && savedUserStr) {
+        this.token = savedToken;
+        this.user = JSON.parse(savedUserStr);
+        console.log('[API AUTH] Session successfully restored for user:', this.user?.email);
+      }
+    } catch (err: any) {
+      console.warn('[API AUTH] Session restoration failed:', err.message || err);
+      // Clean up corrupt session data
+      await this.setSession(null, null);
+    } finally {
+      this.initialized = true;
+    }
+  }
+
+  // Save session state helper
   public async setSession(token: string | null, user: UserProfile | null) {
     this.token = token;
     this.user = user;
+
     try {
       if (token && user) {
-        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token, user }));
+        if (Platform.OS === 'web') {
+          await AsyncStorage.setItem('@quickbiz_jwt_token', token);
+          await AsyncStorage.setItem('@quickbiz_user_profile', JSON.stringify(user));
+        } else {
+          await SecureStore.setItemAsync('quickbiz_jwt_token', token);
+          await SecureStore.setItemAsync('quickbiz_user_profile', JSON.stringify(user));
+        }
       } else {
-        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+        if (Platform.OS === 'web') {
+          await AsyncStorage.removeItem('@quickbiz_jwt_token');
+          await AsyncStorage.removeItem('@quickbiz_user_profile');
+        } else {
+          await SecureStore.deleteItemAsync('quickbiz_jwt_token');
+          await SecureStore.deleteItemAsync('quickbiz_user_profile');
+        }
       }
-    } catch (err) {
-      console.warn('[AUTH] Failed to persist session:', err);
+    } catch (err: any) {
+      console.error('[API AUTH] Failed to persist session data:', err.message || err);
     }
-    this.notifyListeners();
-  }
-
-  // Restore session from AsyncStorage on app startup
-  public async restoreSession(): Promise<boolean> {
-    try {
-      const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-      if (stored) {
-        const { token, user } = JSON.parse(stored);
-        this.token = token;
-        this.user = user;
-        console.log('[AUTH] Session restored from storage');
-        this.notifyListeners();
-        return true;
-      }
-    } catch (err) {
-      console.warn('[AUTH] Failed to restore session:', err);
-    }
-    return false;
   }
 
   // Get current user profile
@@ -82,18 +82,6 @@ class ApiService {
   // Check if authenticated
   public isAuthenticated(): boolean {
     return this.token !== null;
-  }
-
-  // Subscribe to auth state changes
-  public subscribe(listener: () => void): () => void {
-    this.listeners.push(listener);
-    return () => {
-      this.listeners = this.listeners.filter((l) => l !== listener);
-    };
-  }
-
-  private notifyListeners() {
-    this.listeners.forEach((listener) => listener());
   }
 
   // Helper for auth headers
@@ -107,40 +95,100 @@ class ApiService {
     return headers;
   }
 
+  // Private request client supporting timeout and standardized error handling
+  private async request(url: string, options: RequestInit, timeoutMs = 10000): Promise<any> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      // Direct request using loopback URL with fallback on fetch errors
+      let response;
+      try {
+        response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+        });
+      } catch (err: any) {
+        // Fallback for iOS Simulator if localhost is preferred over android loopback IP
+        if (url.includes('10.0.2.2')) {
+          const fallbackUrl = url.replace('10.0.2.2', 'localhost');
+          response = await fetch(fallbackUrl, {
+            ...options,
+            signal: controller.signal,
+          });
+        } else {
+          throw err;
+        }
+      }
+
+      clearTimeout(id);
+
+      const contentType = response.headers.get('content-type');
+      let data: any = {};
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      }
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired or invalid — clear session automatically
+          await this.setSession(null, null);
+          throw new Error('Your session has expired. Please sign in again.');
+        }
+        if (response.status === 403) {
+          throw new Error('You do not have permission to perform this action.');
+        }
+        if (response.status === 409) {
+          // Duplicate contact validation error
+          const err: any = new Error(data.message || 'Duplicate contact found');
+          err.status = 409;
+          err.duplicate = true;
+          err.existingContact = data.existingContact;
+          throw err;
+        }
+        if (response.status >= 500) {
+          throw new Error('The QuickBiz server is currently experiencing issues. Please try again later.');
+        }
+        throw new Error(data.message || `Request failed with status ${response.status}`);
+      }
+
+      return data;
+    } catch (err: any) {
+      clearTimeout(id);
+      if (err.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your network and try again.');
+      }
+      if (err.message && err.message.toLowerCase().includes('network')) {
+        throw new Error('Network request failed. You may be offline or the server is unreachable.');
+      }
+      throw err;
+    }
+  }
+
   // Auth: Register
   public async register(name: string, email: string, password: string) {
-    const response = await fetch(`${BASE_URL}/auth/register`, {
+    const data = await this.request(`${BASE_URL}/auth/register`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ name, email, password }),
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Registration failed');
-    }
-
     if (data.token && data.user) {
-      this.setSession(data.token, data.user);
+      await this.setSession(data.token, data.user);
     }
     return data;
   }
 
   // Auth: Login
   public async login(email: string, password: string) {
-    const response = await fetch(`${BASE_URL}/auth/login`, {
+    const data = await this.request(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
-    }
-
     if (data.token && data.user) {
-      this.setSession(data.token, data.user);
+      await this.setSession(data.token, data.user);
     }
     return data;
   }
@@ -152,27 +200,15 @@ class ApiService {
 
   // Contacts: Create
   public async createContact(contactData: any, forceSave = false) {
-    const response = await fetch(`${BASE_URL}/contacts`, {
+    return this.request(`${BASE_URL}/contacts`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ ...contactData, forceSave }),
     });
-
-    const data = await response.json();
-    if (response.status === 409 && data.duplicate) {
-      // Return duplicate response directly so UI can handle prompt
-      return data;
-    }
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to create contact');
-    }
-
-    return data;
   }
 
-  // Contacts: Get All
-  public async getContacts(category?: string, query?: string) {
+  // Contacts: Get All (paginated)
+  public async getContacts(category?: string, query?: string, page?: number, limit?: number) {
     let url = `${BASE_URL}/contacts`;
     const params = new URLSearchParams();
     if (category && category !== 'All') {
@@ -181,112 +217,52 @@ class ApiService {
     if (query) {
       params.append('q', query);
     }
+    if (page) {
+      params.append('page', String(page));
+    }
+    if (limit) {
+      params.append('limit', String(limit));
+    }
 
     const queryString = params.toString();
     if (queryString) {
       url += `?${queryString}`;
     }
 
-    const response = await fetch(url, {
+    const data = await this.request(url, {
       method: 'GET',
       headers: this.getHeaders(),
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch contacts');
-    }
 
     return data.contacts || [];
   }
 
   // Contacts: Update
   public async updateContact(id: string, contactData: any) {
-    const response = await fetch(`${BASE_URL}/contacts/${id}`, {
+    const data = await this.request(`${BASE_URL}/contacts/${id}`, {
       method: 'PATCH',
       headers: this.getHeaders(),
       body: JSON.stringify(contactData),
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to update contact');
-    }
-
     return data.contact;
   }
 
   // Contacts: Delete
   public async deleteContact(id: string) {
-    const response = await fetch(`${BASE_URL}/contacts/${id}`, {
+    return this.request(`${BASE_URL}/contacts/${id}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to delete contact');
-    }
-
-    return data;
   }
 
-  // OCR: Scan business card
-  public async performOcr(base64Image: string) {
-    const tokenPresent = this.token !== null;
-    console.log(`[AUTH] Token exists: ${tokenPresent}`);
-    console.log(`[AUTH] Token length: ${this.token?.length ?? 0}`);
-    console.log(`[AUTH] OCR request authenticated: ${tokenPresent}`);
-
-    const url = `${BASE_URL}/ocr/business-card`;
-    console.log(`[OCR] Upload URL: ${url}`);
-    console.log('[OCR] Request started');
-
-    const response = await fetch(url, {
-      method: 'POST',
+  // Auth: Delete Account
+  public async deleteAccount() {
+    return this.request(`${BASE_URL}/auth/account`, {
+      method: 'DELETE',
       headers: this.getHeaders(),
-      body: JSON.stringify({ image: base64Image }),
     });
-
-    console.log(`[OCR] Response status: ${response.status}`);
-    const data = await response.json();
-
-    if (response.status === 401) {
-      throw new Error('SESSION_EXPIRED');
-    }
-    if (response.status === 403) {
-      throw new Error('OCR_FORBIDDEN');
-    }
-    if (response.status === 503) {
-      throw new Error('OCR_UNAVAILABLE');
-    }
-    if (!response.ok) {
-      throw new Error(data.error?.message || data.message || 'OCR extraction failed');
-    }
-    console.log('[OCR] OCR response received');
-    return data.ocr; // returns { rawText, blocks, lines, confidence }
-  }
-
-  // OCR: Check config/credentials status
-  public async checkOcrHealth() {
-    const url = `${BASE_URL}/ocr/health`;
-    console.log(`[OCR] Health check URL: ${url}`);
-    console.log('[OCR] Health check started...');
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: this.getHeaders(),
-      });
-      console.log(`[OCR] HTTP status: ${response.status}`);
-      const data = await response.json();
-      console.log(`[OCR] Response body: ${JSON.stringify(data)}`);
-      return data; // returns { success, provider, configured, code }
-    } catch (err: any) {
-      console.log(`[OCR] Network error: ${err.message || err}`);
-      console.log('[OCR] Error message: Unable to connect to backend server');
-      return { success: false, configured: false, code: 'NETWORK_ERROR' };
-    }
   }
 }
 
 export const apiService = new ApiService();
+export default apiService;
