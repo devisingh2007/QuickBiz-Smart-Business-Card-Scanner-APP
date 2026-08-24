@@ -8,6 +8,7 @@ try {
 } catch (e: any) {
   console.warn('[OCR] expo-mlkit-ocr native module not available in this client environment:', e.message);
 }
+console.log(`[OCR] ML Kit native module available: ${recognizeText !== null}`);
 
 // ─── Types (matches expo-mlkit-ocr RecognitionResult) ──────────────────────────
 export interface MlKitOcrResult {
