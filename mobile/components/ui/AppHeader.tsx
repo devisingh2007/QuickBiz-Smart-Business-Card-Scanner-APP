@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Palette, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface AppHeaderProps {
   title?: string;
@@ -19,10 +20,21 @@ export function AppHeader({
   onRightAction,
   style,
 }: AppHeaderProps) {
+  const { colors } = useTheme();
+
   return (
-    <View style={[styles.header, style]}>
+    <View
+      style={[
+        styles.header,
+        {
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.borderSoft,
+        },
+        style,
+      ]}
+    >
       <View style={styles.brandRow}>
-        <Text style={styles.brandTitle}>{title}</Text>
+        <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>{title}</Text>
         <View style={styles.orangeDot} />
       </View>
       {rightAction && (
@@ -45,9 +57,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    backgroundColor: Palette.canvas,
     borderBottomWidth: 1,
-    borderBottomColor: Palette.hairlineSoft,
   },
   brandRow: {
     flexDirection: 'row',
@@ -57,7 +67,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 20,
     fontWeight: '700',
-    color: Palette.ink,
     letterSpacing: -0.3,
   },
   orangeDot: {

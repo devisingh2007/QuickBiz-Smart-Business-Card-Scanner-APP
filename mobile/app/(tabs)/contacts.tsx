@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Palette, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ContactRow } from '@/components/ui/ContactRow';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -21,6 +22,7 @@ import { CATEGORIES } from '@/constants/categories';
 
 export default function ContactsScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -85,12 +87,15 @@ export default function ContactsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
       {/* Editorial Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Contacts</Text>
-          <Text style={styles.countBadge}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Contacts</Text>
+          <Text style={[styles.countBadge, { color: colors.textMuted }]}>
             {contacts.length} {contacts.length === 1 ? 'record' : 'records'}
           </Text>
         </View>
@@ -124,7 +129,7 @@ export default function ContactsScreen() {
       </View>
 
       {/* Mistral Category Filter Pills */}
-      <View style={styles.categoryContainer}>
+      <View style={[styles.categoryContainer, { borderBottomColor: colors.borderSoft }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -139,13 +144,23 @@ export default function ContactsScreen() {
                 activeOpacity={0.8}
                 style={[
                   styles.categoryPill,
-                  isSelected ? styles.categoryPillActive : styles.categoryPillInactive,
+                  isSelected
+                    ? {
+                        backgroundColor: isDark ? colors.card : colors.textPrimary,
+                        borderColor: isDark ? colors.primary : colors.textPrimary,
+                      }
+                    : {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
                 ]}
               >
                 <Text
                   style={[
                     styles.categoryText,
-                    isSelected ? styles.categoryTextActive : styles.categoryTextInactive,
+                    isSelected
+                      ? { color: isDark ? colors.primary : '#FFFFFF', fontWeight: '600' }
+                      : { color: colors.textSecondary },
                   ]}
                 >
                   {category}
@@ -160,7 +175,9 @@ export default function ContactsScreen() {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={Palette.primary} size="small" />
-          <Text style={styles.loadingText}>Refreshing directory...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+            Refreshing directory...
+          </Text>
         </View>
       ) : contacts.length === 0 ? (
         <EmptyState
@@ -213,7 +230,6 @@ export default function ContactsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Palette.canvas,
   },
   header: {
     flexDirection: 'row',
@@ -227,13 +243,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 28,
     fontWeight: '400',
-    color: Palette.ink,
     letterSpacing: -0.6,
   },
   countBadge: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 12,
-    color: Palette.stone,
     fontWeight: '500',
     marginTop: 2,
   },
@@ -258,7 +272,6 @@ const styles = StyleSheet.create({
   },
   categoryContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: Palette.hairlineSoft,
     paddingBottom: 10,
     marginBottom: 4,
   },
@@ -269,29 +282,14 @@ const styles = StyleSheet.create({
   categoryPill: {
     height: 32,
     paddingHorizontal: 14,
-    borderRadius: 9999, // Pill geometry permitted for category filter tags
+    borderRadius: 9999,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryPillActive: {
-    backgroundColor: Palette.ink,
-    borderColor: Palette.ink,
-  },
-  categoryPillInactive: {
-    backgroundColor: Palette.canvas,
-    borderColor: Palette.hairline,
-  },
   categoryText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 12,
-    fontWeight: '500',
-  },
-  categoryTextActive: {
-    color: '#FFFFFF',
-  },
-  categoryTextInactive: {
-    color: Palette.slate,
   },
   listContent: {
     paddingBottom: 40,
@@ -304,7 +302,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
-    color: Palette.stone,
     marginTop: 10,
   },
 });

@@ -6,6 +6,7 @@ import { SecondaryButton } from './ui/SecondaryButton';
 import { SunsetStripe } from './ui/SunsetStripe';
 import { IconSymbol } from './ui/icon-symbol';
 import { Palette, Typography, BorderRadius } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { router } from 'expo-router';
 
 interface Props {
@@ -14,6 +15,51 @@ interface Props {
 
 interface State {
   hasError: boolean;
+}
+
+function ErrorFallbackView({ onTryAgain, onReturnHome }: { onTryAgain: () => void; onReturnHome: () => void }) {
+  const { colors } = useTheme();
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.iconTile,
+            {
+              backgroundColor: colors.surfaceCream,
+              borderColor: colors.borderBeige,
+            },
+          ]}
+        >
+          <IconSymbol
+            name="exclamationmark.triangle.fill"
+            size={32}
+            color={Palette.primary}
+          />
+        </View>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>System Interruption</Text>
+        <Text style={[styles.message, { color: colors.textSecondary }]}>
+          An unexpected display exception occurred. Application state has been
+          kept isolated. You can reload this view or return to the main dashboard.
+        </Text>
+        <View style={styles.actions}>
+          <PrimaryButton
+            title="Try Again"
+            onPress={onTryAgain}
+            style={styles.button}
+          />
+          <SecondaryButton
+            title="Return to Dashboard"
+            onPress={onReturnHome}
+            variant="outline"
+            style={styles.button}
+          />
+        </View>
+      </View>
+      <SunsetStripe height={4} style={styles.bottomStripe} />
+    </SafeAreaView>
+  );
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -45,36 +91,10 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <SafeAreaView style={styles.container}>
-          <View style={styles.content}>
-            <View style={styles.iconTile}>
-              <IconSymbol
-                name="exclamationmark.triangle.fill"
-                size={32}
-                color={Palette.primary}
-              />
-            </View>
-            <Text style={styles.title}>System Interruption</Text>
-            <Text style={styles.message}>
-              An unexpected display exception occurred. Application state has been
-              kept isolated. You can reload this view or return to the main dashboard.
-            </Text>
-            <View style={styles.actions}>
-              <PrimaryButton
-                title="Try Again"
-                onPress={this.handleTryAgain}
-                style={styles.button}
-              />
-              <SecondaryButton
-                title="Return to Dashboard"
-                onPress={this.handleReturnHome}
-                variant="outline"
-                style={styles.button}
-              />
-            </View>
-          </View>
-          <SunsetStripe height={4} style={styles.bottomStripe} />
-        </SafeAreaView>
+        <ErrorFallbackView
+          onTryAgain={this.handleTryAgain}
+          onReturnHome={this.handleReturnHome}
+        />
       );
     }
 
@@ -85,7 +105,6 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Palette.canvas,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -101,9 +120,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: BorderRadius.lg, // 12px
-    backgroundColor: Palette.cream,
     borderWidth: 1,
-    borderColor: Palette.beigeDeep,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -112,7 +129,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 26,
     fontWeight: '400',
-    color: Palette.ink,
     textAlign: 'center',
     letterSpacing: -0.5,
     marginBottom: 10,
@@ -120,7 +136,6 @@ const styles = StyleSheet.create({
   message: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.slate,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 28,

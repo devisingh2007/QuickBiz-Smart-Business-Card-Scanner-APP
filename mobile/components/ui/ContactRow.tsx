@@ -7,6 +7,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Palette, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { Avatar } from './Avatar';
 import { Badge } from './Badge';
 import { IconSymbol } from './icon-symbol';
@@ -42,6 +43,8 @@ export function ContactRow({
   showDivider = true,
   style,
 }: ContactRowProps) {
+  const { colors } = useTheme();
+
   const primaryPhone =
     contact.phones && contact.phones.length > 0
       ? contact.phones[0].value
@@ -54,13 +57,20 @@ export function ContactRow({
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={onPress}
-      style={[styles.container, style]}
+      style={[
+        styles.container,
+        { backgroundColor: colors.surface },
+        style,
+      ]}
     >
       <View style={styles.innerRow}>
         <Avatar name={contact.name || 'Anonymous'} size="md" variant="cream" />
         <View style={styles.content}>
           <View style={styles.titleRow}>
-            <Text style={styles.name} numberOfLines={1}>
+            <Text
+              style={[styles.name, { color: colors.textPrimary }]}
+              numberOfLines={1}
+            >
               {contact.name || 'Unnamed Contact'}
             </Text>
             {contact.category && (
@@ -68,12 +78,18 @@ export function ContactRow({
             )}
           </View>
           {subtitle.length > 0 && (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text
+              style={[styles.subtitle, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
               {subtitle}
             </Text>
           )}
           {primaryPhone && (
-            <Text style={styles.phone} numberOfLines={1}>
+            <Text
+              style={[styles.phone, { color: colors.textTertiary }]}
+              numberOfLines={1}
+            >
               {primaryPhone}
             </Text>
           )}
@@ -81,11 +97,18 @@ export function ContactRow({
         <IconSymbol
           name="chevron.right"
           size={14}
-          color={Palette.stone}
+          color={colors.textTertiary}
           style={styles.chevron}
         />
       </View>
-      {showDivider && <View style={styles.divider} />}
+      {showDivider && (
+        <View
+          style={[
+            styles.divider,
+            { backgroundColor: colors.borderSoft },
+          ]}
+        />
+      )}
     </TouchableOpacity>
   );
 }

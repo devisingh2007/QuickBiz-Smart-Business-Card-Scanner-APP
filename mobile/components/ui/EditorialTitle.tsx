@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { Typography, Palette } from '@/constants/theme';
+import { Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 interface EditorialTitleProps {
   title: string;
@@ -23,6 +24,8 @@ export function EditorialTitle({
   titleStyle,
   subtitleStyle,
 }: EditorialTitleProps) {
+  const { colors } = useTheme();
+
   const getTitleTypography = () => {
     switch (size) {
       case 'hero':
@@ -37,11 +40,25 @@ export function EditorialTitle({
 
   return (
     <View style={[styles.container, style]}>
-      <Text style={[styles.title, getTitleTypography(), titleStyle]}>
+      <Text
+        style={[
+          styles.title,
+          getTitleTypography(),
+          { color: colors.textPrimary },
+          titleStyle,
+        ]}
+      >
         {title}
       </Text>
       {subtitle && (
-        <Text style={[styles.subtitle, Typography.subtitle, subtitleStyle]}>
+        <Text
+          style={[
+            styles.subtitle,
+            Typography.subtitle,
+            { color: colors.textSecondary },
+            subtitleStyle,
+          ]}
+        >
           {subtitle}
         </Text>
       )}
@@ -53,11 +70,8 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
   },
-  title: {
-    color: Palette.ink,
-  },
+  title: {},
   subtitle: {
-    color: Palette.slate,
     marginTop: 6,
   },
 });

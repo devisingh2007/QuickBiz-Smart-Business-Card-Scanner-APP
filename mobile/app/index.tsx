@@ -3,11 +3,13 @@ import { useRouter } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Palette, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { SunsetStripe } from '@/components/ui/SunsetStripe';
 import { apiService } from '@/services/api.service';
 
 export default function Index() {
   const router = useRouter();
+  const { colors } = useTheme();
 
   useEffect(() => {
     const checkNavigationFlow = async () => {
@@ -36,17 +38,17 @@ export default function Index() {
   }, [router]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.centerContent}>
         <View style={styles.brandRow}>
-          <Text style={styles.logo}>QuickBiz</Text>
+          <Text style={[styles.logo, { color: colors.textPrimary }]}>QuickBiz</Text>
           <View style={styles.orangeDot} />
         </View>
-        <Text style={styles.subtitle}>Smart Business Contacts</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Smart Business Contacts</Text>
 
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="small" color={Palette.primary} />
-          <Text style={styles.loadingText}>Initializing...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Initializing...</Text>
         </View>
       </View>
 
@@ -58,7 +60,6 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Palette.canvas,
     justifyContent: 'space-between',
   },
   centerContent: {
@@ -74,7 +75,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 38,
     fontWeight: '700',
-    color: Palette.ink,
     letterSpacing: -0.8,
   },
   orangeDot: {
@@ -88,7 +88,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.slate,
     marginTop: 6,
     letterSpacing: 0.1,
   },
@@ -100,7 +99,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
-    color: Palette.stone,
     marginLeft: 8,
   },
 });

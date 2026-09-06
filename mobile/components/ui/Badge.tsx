@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Palette, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export type BadgeVariant = 'orange' | 'cream' | 'dark' | 'neutral' | 'success';
 
@@ -19,6 +20,7 @@ export function Badge({
   style,
   textStyle,
 }: BadgeProps) {
+  const { colors, isDark } = useTheme();
   const isSm = size === 'sm';
 
   const getContainerStyle = () => {
@@ -30,24 +32,24 @@ export function Badge({
         };
       case 'cream':
         return {
-          backgroundColor: Palette.creamDeeper,
-          borderColor: Palette.beigeDeep,
+          backgroundColor: colors.surfaceCream,
+          borderColor: colors.borderBeige,
         };
       case 'dark':
         return {
-          backgroundColor: Palette.ink,
-          borderColor: Palette.charcoal,
+          backgroundColor: isDark ? colors.card : Palette.ink,
+          borderColor: isDark ? colors.border : Palette.charcoal,
         };
       case 'success':
         return {
-          backgroundColor: Palette.successLight,
-          borderColor: '#C6E8D5',
+          backgroundColor: colors.successLight,
+          borderColor: isDark ? '#1B8755' : '#C6E8D5',
         };
       case 'neutral':
       default:
         return {
-          backgroundColor: Palette.surface,
-          borderColor: Palette.hairline,
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
         };
     }
   };
@@ -56,14 +58,14 @@ export function Badge({
     switch (variant) {
       case 'orange':
       case 'dark':
-        return Palette.onPrimary;
+        return '#FFFFFF';
       case 'cream':
-        return Palette.ink;
+        return isDark ? colors.textPrimary : Palette.ink;
       case 'success':
-        return Palette.success;
+        return colors.success;
       case 'neutral':
       default:
-        return Palette.slate;
+        return colors.textSecondary;
     }
   };
 

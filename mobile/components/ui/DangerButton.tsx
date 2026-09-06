@@ -8,6 +8,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { BorderRadius, Typography, Palette } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export interface DangerButtonProps {
   title: string;
@@ -34,6 +35,7 @@ export function DangerButton({
   textStyle,
   icon,
 }: DangerButtonProps) {
+  const { colors, isDark } = useTheme();
   const [isPressed, setIsPressed] = useState(false);
   const isSubtle = variant === 'subtle';
 
@@ -46,21 +48,30 @@ export function DangerButton({
       disabled={disabled || loading}
       style={[
         styles.button,
-        isSubtle ? styles.buttonSubtle : styles.buttonSolid,
-        isPressed && (isSubtle ? styles.buttonSubtlePressed : styles.buttonSolidPressed),
+        isSubtle
+          ? {
+              backgroundColor: 'transparent',
+              borderWidth: 1,
+              borderColor: isDark ? colors.error : '#FCA5A5',
+            }
+          : { backgroundColor: colors.error },
+        isPressed &&
+          (isSubtle
+            ? { backgroundColor: colors.errorLight }
+            : { backgroundColor: '#B91C1C' }),
         disabled && styles.buttonDisabled,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isSubtle ? Palette.error : '#FFFFFF'} size="small" />
+        <ActivityIndicator color={isSubtle ? colors.error : '#FFFFFF'} size="small" />
       ) : (
         <React.Fragment>
           {icon}
           <Text
             style={[
               styles.text,
-              isSubtle ? styles.textSubtle : styles.textSolid,
+              isSubtle ? { color: colors.error } : styles.textSolid,
               icon ? { marginLeft: 8 } : null,
               textStyle,
             ]}

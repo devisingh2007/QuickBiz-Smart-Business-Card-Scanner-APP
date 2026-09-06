@@ -12,8 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Contacts from 'expo-contacts';
-import { Colors, Spacing, Typography, BorderRadius, Palette } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Spacing, Typography, BorderRadius, Palette } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
@@ -26,8 +26,7 @@ import { CATEGORIES } from '@/constants/categories';
 export default function ReviewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+  const { colors, isDark } = useTheme();
 
   // Initialize fields from router parameters
   const [name, setName] = useState((params.name as string) || '');
@@ -262,13 +261,13 @@ export default function ReviewScreen() {
             </Text>
           </View>
 
-          {/* Mistral Contact Form Panel (Cream surface with 12px radius & 1px beige border) */}
+          {/* Mistral Contact Form Panel (Cream surface in light mode, Dark card in dark mode) */}
           <View
             style={[
               styles.formPanel,
               {
-                backgroundColor: colors.surfaceCream,
-                borderColor: colors.borderBeige,
+                backgroundColor: isDark ? colors.card : colors.surfaceCream,
+                borderColor: isDark ? colors.cardBorder : colors.borderBeige,
               },
             ]}
           >
@@ -289,7 +288,10 @@ export default function ReviewScreen() {
                         styles.categoryChip,
                         isSelected
                           ? { backgroundColor: Palette.primary, borderColor: Palette.primary }
-                          : { backgroundColor: colors.surface, borderColor: colors.borderHairline },
+                          : {
+                              backgroundColor: isDark ? colors.surface : colors.surface,
+                              borderColor: isDark ? colors.border : colors.borderHairline,
+                            },
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel={`Select ${cat} category`}

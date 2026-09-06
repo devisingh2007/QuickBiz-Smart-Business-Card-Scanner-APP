@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   ViewStyle,
 } from 'react-native';
-import { Palette, BorderRadius, Typography } from '@/constants/theme';
+import { BorderRadius, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { IconSymbol } from './icon-symbol';
 
 interface SearchInputProps {
@@ -19,7 +20,7 @@ interface SearchInputProps {
 
 /**
  * Mistral AI Search Input
- * White canvas surface, 8px radius, 1px subtle hairline border,
+ * White/dark canvas surface, 8px radius, 1px subtle hairline border,
  * search magnifying glass icon and clear button.
  */
 export function SearchInput({
@@ -29,25 +30,36 @@ export function SearchInput({
   onClear,
   style,
 }: SearchInputProps) {
+  const { colors } = useTheme();
+
   const handleClear = () => {
     onChangeText('');
     if (onClear) onClear();
   };
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.inputBackground,
+          borderColor: colors.inputBorder,
+        },
+        style,
+      ]}
+    >
       <IconSymbol
         name="magnifyingglass"
         size={16}
-        color={Palette.stone}
+        color={colors.inputPlaceholder}
         style={styles.searchIcon}
       />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={Palette.stone}
-        style={styles.input}
+        placeholderTextColor={colors.inputPlaceholder}
+        style={[styles.input, { color: colors.textPrimary }]}
         autoCapitalize="none"
         autoCorrect={false}
         clearButtonMode="never"
@@ -58,7 +70,7 @@ export function SearchInput({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={styles.clearBtn}
         >
-          <IconSymbol name="xmark.circle.fill" size={16} color={Palette.stone} />
+          <IconSymbol name="xmark.circle.fill" size={16} color={colors.inputPlaceholder} />
         </TouchableOpacity>
       )}
     </View>
@@ -69,9 +81,7 @@ const styles = StyleSheet.create({
   container: {
     height: 44,
     minHeight: 44,
-    backgroundColor: Palette.canvas,
     borderWidth: 1,
-    borderColor: Palette.hairlineSoft,
     borderRadius: BorderRadius.md, // 8px radius
     flexDirection: 'row',
     alignItems: 'center',
@@ -85,7 +95,6 @@ const styles = StyleSheet.create({
     height: '100%',
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.ink,
     paddingVertical: 0,
   },
   clearBtn: {

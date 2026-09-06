@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Camera } from 'expo-camera';
 import * as Contacts from 'expo-contacts';
 import { Palette, Typography, BorderRadius } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Badge } from '@/components/ui/Badge';
 import { SunsetStripe } from '@/components/ui/SunsetStripe';
@@ -22,6 +23,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function PermissionScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   const [cameraStatus, setCameraStatus] = useState<string>('undetermined');
   const [cameraCanAskAgain, setCameraCanAskAgain] = useState(true);
@@ -138,32 +140,58 @@ export default function PermissionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
+      <SafeAreaView
+        style={[
+          styles.container,
+          styles.center,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <ActivityIndicator size="small" color={Palette.primary} />
-        <Text style={styles.loadingText}>Checking permissions...</Text>
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+          Checking permissions...
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Device Permissions</Text>
-          <Text style={styles.description}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Device Permissions</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>
             QuickBiz requires access to your camera and local contacts to provide on-device scanning and saving.
           </Text>
         </View>
 
         <View style={styles.list}>
           {/* Camera Card */}
-          <View style={styles.permissionCard}>
-            <View style={styles.iconTile}>
+          <View
+            style={[
+              styles.permissionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.iconTile,
+                isDark
+                  ? { backgroundColor: colors.surface, borderColor: colors.border }
+                  : { backgroundColor: Palette.cream, borderColor: Palette.beigeDeep },
+              ]}
+            >
               <IconSymbol name="camera.fill" size={22} color={Palette.primary} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Camera Scanner</Text>
-              <Text style={styles.cardDescription}>
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Camera Scanner</Text>
+              <Text style={[styles.cardDescription, { color: colors.textSecondary }]}>
                 Captures high-resolution frames of business cards for on-device OCR parsing.
               </Text>
             </View>
@@ -172,21 +200,48 @@ export default function PermissionScreen() {
             ) : (
               <TouchableOpacity
                 onPress={requestCamera}
-                style={styles.grantBtn}
+                style={[
+                  styles.grantBtn,
+                  isDark
+                    ? { backgroundColor: colors.surface, borderColor: colors.primary }
+                    : { backgroundColor: Palette.cream, borderColor: Palette.beigeDeep },
+                ]}
               >
-                <Text style={styles.grantBtnText}>Grant</Text>
+                <Text
+                  style={[
+                    styles.grantBtnText,
+                    { color: isDark ? colors.primary : Palette.ink },
+                  ]}
+                >
+                  Grant
+                </Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Contacts Card */}
-          <View style={styles.permissionCard}>
-            <View style={styles.iconTile}>
+          <View
+            style={[
+              styles.permissionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.iconTile,
+                isDark
+                  ? { backgroundColor: colors.surface, borderColor: colors.border }
+                  : { backgroundColor: Palette.cream, borderColor: Palette.beigeDeep },
+              ]}
+            >
               <IconSymbol name="person.2.fill" size={22} color={Palette.primary} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Address Book</Text>
-              <Text style={styles.cardDescription}>
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Address Book</Text>
+              <Text style={[styles.cardDescription, { color: colors.textSecondary }]}>
                 Directly writes parsed contact records to your phone native contact directory.
               </Text>
             </View>
@@ -195,9 +250,21 @@ export default function PermissionScreen() {
             ) : (
               <TouchableOpacity
                 onPress={requestContacts}
-                style={styles.grantBtn}
+                style={[
+                  styles.grantBtn,
+                  isDark
+                    ? { backgroundColor: colors.surface, borderColor: colors.primary }
+                    : { backgroundColor: Palette.cream, borderColor: Palette.beigeDeep },
+                ]}
               >
-                <Text style={styles.grantBtnText}>Grant</Text>
+                <Text
+                  style={[
+                    styles.grantBtnText,
+                    { color: isDark ? colors.primary : Palette.ink },
+                  ]}
+                >
+                  Grant
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -220,7 +287,6 @@ export default function PermissionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Palette.canvas,
     justifyContent: 'space-between',
   },
   center: {
@@ -230,7 +296,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
-    color: Palette.stone,
     marginTop: 12,
   },
   content: {
@@ -246,14 +311,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 28,
     fontWeight: '400',
-    color: Palette.ink,
     letterSpacing: -0.6,
     marginBottom: 8,
   },
   description: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.slate,
     lineHeight: 22,
   },
   list: {
@@ -262,19 +325,15 @@ const styles = StyleSheet.create({
   permissionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Palette.canvas,
     borderWidth: 1,
-    borderColor: Palette.hairlineSoft,
-    borderRadius: BorderRadius.lg, // 12px
+    borderRadius: BorderRadius.lg,
     padding: 16,
   },
   iconTile: {
     width: 46,
     height: 46,
-    borderRadius: BorderRadius.md, // 8px
-    backgroundColor: Palette.cream,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: Palette.beigeDeep,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -287,21 +346,17 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 15,
     fontWeight: '600',
-    color: Palette.ink,
     marginBottom: 2,
   },
   cardDescription: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 12,
-    color: Palette.slate,
     lineHeight: 17,
   },
   grantBtn: {
     height: 32,
     paddingHorizontal: 12,
-    backgroundColor: Palette.cream,
     borderWidth: 1,
-    borderColor: Palette.beigeDeep,
     borderRadius: BorderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -310,7 +365,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 12,
     fontWeight: '600',
-    color: Palette.ink,
   },
   actionContainer: {
     paddingBottom: 28,

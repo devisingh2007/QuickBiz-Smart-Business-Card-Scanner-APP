@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Palette, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export interface AvatarProps {
   name?: string;
@@ -15,6 +16,8 @@ export function Avatar({
   variant = 'cream',
   style,
 }: AvatarProps) {
+  const { colors, isDark } = useTheme();
+
   const getInitials = (str: string) => {
     if (!str) return 'Q';
     const parts = str.trim().split(/\s+/);
@@ -46,22 +49,22 @@ export function Avatar({
         };
       case 'dark':
         return {
-          backgroundColor: Palette.ink,
-          borderColor: Palette.charcoal,
-          textColor: Palette.onDark,
+          backgroundColor: isDark ? colors.card : Palette.ink,
+          borderColor: isDark ? colors.border : Palette.charcoal,
+          textColor: colors.textPrimary,
         };
       case 'neutral':
         return {
-          backgroundColor: Palette.surface,
-          borderColor: Palette.hairline,
-          textColor: Palette.slate,
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          textColor: colors.textSecondary,
         };
       case 'cream':
       default:
         return {
-          backgroundColor: Palette.cream,
-          borderColor: Palette.beigeDeep,
-          textColor: Palette.ink,
+          backgroundColor: colors.surfaceCream,
+          borderColor: colors.borderBeige,
+          textColor: isDark ? colors.textPrimary : Palette.ink,
         };
     }
   };

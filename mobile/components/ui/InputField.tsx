@@ -8,6 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Palette, BorderRadius, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export interface InputFieldProps extends TextInputProps {
   label?: string;
@@ -19,7 +20,7 @@ export interface InputFieldProps extends TextInputProps {
 
 /**
  * Mistral AI Input Field
- * White background, 8px radius, 1px subtle hairline border,
+ * White/dark background, 8px radius, 1px subtle hairline border,
  * signature orange focus border, Inter typography, optional left icon.
  */
 export function InputField({
@@ -33,6 +34,7 @@ export function InputField({
   onBlur,
   ...rest
 }: InputFieldProps) {
+  const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
   const handleFocus = (e: any) => {
@@ -47,13 +49,20 @@ export function InputField({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>}
       <View
         style={[
           styles.inputWrapper,
+          {
+            backgroundColor: colors.inputBackground,
+            borderColor: colors.inputBorder,
+          },
           isFocused && styles.inputWrapperFocused,
           error ? styles.inputWrapperError : null,
-          disabled && styles.inputWrapperDisabled,
+          disabled && {
+            backgroundColor: colors.surface,
+            borderColor: colors.borderSoft,
+          },
         ]}
       >
         {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
@@ -61,17 +70,18 @@ export function InputField({
           editable={!disabled}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholderTextColor={Palette.stone}
+          placeholderTextColor={colors.inputPlaceholder}
           style={[
             styles.input,
+            { color: colors.textPrimary },
             leftIcon ? styles.inputWithIcon : null,
-            disabled && styles.inputDisabled,
+            disabled && { color: colors.textTertiary },
             style,
           ]}
           {...rest}
         />
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>}
     </View>
   );
 }
@@ -84,7 +94,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
     fontWeight: '500',
-    color: Palette.slate, // #4A4A4A
     marginBottom: 6,
   },
   inputWrapper: {
@@ -92,9 +101,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Palette.canvas, // #FFFFFF
     borderWidth: 1,
-    borderColor: Palette.hairlineSoft, // #EDEDED
     borderRadius: BorderRadius.md, // Exact 8px per Mistral design system
     paddingHorizontal: 12,
   },
@@ -103,10 +110,6 @@ const styles = StyleSheet.create({
   },
   inputWrapperError: {
     borderColor: Palette.error,
-  },
-  inputWrapperDisabled: {
-    backgroundColor: Palette.surface,
-    borderColor: Palette.hairline,
   },
   iconContainer: {
     marginRight: 8,
@@ -118,19 +121,14 @@ const styles = StyleSheet.create({
     height: '100%',
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.ink,
     paddingVertical: 0,
   },
   inputWithIcon: {
     paddingLeft: 0,
   },
-  inputDisabled: {
-    color: Palette.stone,
-  },
   errorText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 12,
-    color: Palette.error,
     marginTop: 4,
   },
 });

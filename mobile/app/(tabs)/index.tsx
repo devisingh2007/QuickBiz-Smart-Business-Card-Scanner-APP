@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Typography, BorderRadius } from '@/constants/theme';
+import { Typography, BorderRadius, Palette } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { ContactRow } from '@/components/ui/ContactRow';
 import { SunsetStripe } from '@/components/ui/SunsetStripe';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -20,6 +21,7 @@ import { contactStore, ContactData } from '@/services/contact.store';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [contacts, setContacts] = useState<ContactData[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,48 +61,48 @@ export default function HomeScreen() {
   const recentContacts = contacts.slice(0, 5);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.surface} />
 
       {/* 1. Top Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.borderSoft }]}>
         <View style={styles.brandRow}>
-          <Text style={styles.brandTitle}>QuickBiz</Text>
+          <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>QuickBiz</Text>
           <View style={styles.brandOrangeDot} />
         </View>
 
         <TouchableOpacity
-          style={styles.settingsButton}
+          style={[styles.settingsButton, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => router.push('/(tabs)/settings')}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Open settings"
         >
-          <IconSymbol name="gearshape.fill" size={19} color="#4A4A4A" />
+          <IconSymbol name="gearshape.fill" size={19} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#FA520F"
-            colors={['#FA520F']}
+            tintColor={Palette.primary}
+            colors={[Palette.primary]}
           />
         }
       >
         {/* 2. Hero Section */}
-        <View style={styles.heroSection}>
+        <View style={[styles.heroSection, { backgroundColor: isDark ? colors.surface : '#F8F7FF' }]}>
           <Text style={styles.heroEyebrow}>INTELLIGENT OCR DIRECTORY</Text>
 
-          <Text style={styles.heroHeading}>
+          <Text style={[styles.heroHeading, { color: colors.textPrimary }]}>
             Your business{'\n'}contacts, organised.
           </Text>
 
-          <Text style={styles.heroDescription}>
+          <Text style={[styles.heroDescription, { color: colors.textSecondary }]}>
             Scan and digitise physical business cards with privacy-preserving,
             lightning-fast on-device optical character recognition.
           </Text>
@@ -124,17 +126,17 @@ export default function HomeScreen() {
         {/* 4. Recent Contacts Section */}
         <View style={styles.recentsSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Contacts</Text>
-            <Text style={styles.totalCountText}>{contacts.length} Total</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Contacts</Text>
+            <Text style={[styles.totalCountText, { color: colors.textTertiary }]}>{contacts.length} Total</Text>
           </View>
 
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#FA520F" size="small" />
-              <Text style={styles.loadingText}>Loading directory...</Text>
+              <ActivityIndicator color={Palette.primary} size="small" />
+              <Text style={[styles.loadingText, { color: colors.textTertiary }]}>Loading directory...</Text>
             </View>
           ) : recentContacts.length > 0 ? (
-            <View style={styles.contactsCard}>
+            <View style={[styles.contactsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               {recentContacts.map((contact, index) => (
                 <ContactRow
                   key={contact.id || index.toString()}
@@ -151,7 +153,7 @@ export default function HomeScreen() {
 
               {contacts.length > 5 && (
                 <TouchableOpacity
-                  style={styles.viewAllFooter}
+                  style={[styles.viewAllFooter, { backgroundColor: colors.surface, borderTopColor: colors.borderSoft }]}
                   onPress={() => router.push('/(tabs)/contacts')}
                   activeOpacity={0.7}
                 >
@@ -163,14 +165,22 @@ export default function HomeScreen() {
             </View>
           ) : (
             /* 5. Empty State Card */
-            <View style={styles.emptyCard}>
-              <View style={styles.emptyIconCircle}>
-                <IconSymbol name="person.2.fill" size={24} color="#FA520F" />
+            <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+              <View
+                style={[
+                  styles.emptyIconCircle,
+                  {
+                    backgroundColor: colors.surfaceCream,
+                    borderColor: colors.borderBeige,
+                  },
+                ]}
+              >
+                <IconSymbol name="person.2.fill" size={24} color={Palette.primary} />
               </View>
 
-              <Text style={styles.emptyTitle}>No Contacts Yet</Text>
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Contacts Yet</Text>
 
-              <Text style={styles.emptySubtitle}>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
                 Capture your first physical card or enter details manually to start
                 building your directory.
               </Text>
@@ -191,7 +201,7 @@ export default function HomeScreen() {
 
               {/* Empty State Secondary Action */}
               <TouchableOpacity
-                style={styles.emptySecondaryButton}
+                style={[styles.emptySecondaryButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() =>
                   router.push({
                     pathname: '/review',
@@ -202,14 +212,14 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Enter contact manually"
               >
-                <IconSymbol name="pencil" size={15} color="#1F1F1F" />
-                <Text style={styles.emptySecondaryButtonText}>Enter Manually</Text>
+                <IconSymbol name="pencil" size={15} color={colors.textPrimary} />
+                <Text style={[styles.emptySecondaryButtonText, { color: colors.textPrimary }]}>Enter Manually</Text>
               </TouchableOpacity>
 
               {/* Trust / Privacy Badge */}
               <View style={styles.trustBadge}>
-                <IconSymbol name="lock.fill" size={12} color="#8A8A8A" />
-                <Text style={styles.trustText}>
+                <IconSymbol name="lock.fill" size={12} color={colors.textTertiary} />
+                <Text style={[styles.trustText, { color: colors.textTertiary }]}>
                   100% On-device ML • Private & Offline-ready
                 </Text>
               </View>
@@ -224,7 +234,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F7FF',
   },
   header: {
     height: 52,
@@ -232,9 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5E5',
   },
   brandRow: {
     flexDirection: 'row',
@@ -244,14 +251,13 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 22,
     fontWeight: '700',
-    color: '#1F1F1F',
     letterSpacing: -0.4,
   },
   brandOrangeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FA520F',
+    backgroundColor: Palette.primary,
     marginLeft: 2,
     marginBottom: 4,
   },
@@ -261,26 +267,22 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E5E5',
   },
   scrollContent: {
     paddingBottom: 40,
-    backgroundColor: '#F8F7FF',
   },
   heroSection: {
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 22,
-    backgroundColor: '#F8F7FF',
   },
   heroEyebrow: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
-    color: '#FA520F',
+    color: Palette.primary,
     marginBottom: 8,
   },
   heroHeading: {
@@ -289,26 +291,24 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 38,
     letterSpacing: -0.6,
-    color: '#1F1F1F',
     marginBottom: 10,
   },
   heroDescription: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13.5,
     lineHeight: 20,
-    color: '#6A6A6A',
     marginBottom: 20,
   },
   primaryScanButton: {
     width: '100%',
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#FA520F',
+    backgroundColor: Palette.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#FA520F',
+    shadowColor: Palette.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
@@ -337,20 +337,16 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F1F1F',
     letterSpacing: -0.2,
   },
   totalCountText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
     fontWeight: '500',
-    color: '#8A8A8A',
   },
   contactsCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     overflow: 'hidden',
   },
   viewAllFooter: {
@@ -358,14 +354,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E5E5',
-    backgroundColor: '#FAFAFA',
   },
   viewAllFooterText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
     fontWeight: '600',
-    color: '#FA520F',
+    color: Palette.primary,
   },
   loadingContainer: {
     paddingVertical: 40,
@@ -375,14 +369,11 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
-    color: '#8A8A8A',
     marginTop: 10,
   },
   emptyCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     padding: 24,
     alignItems: 'center',
     marginTop: 4,
@@ -396,9 +387,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FFF8E0',
     borderWidth: 1,
-    borderColor: '#E6D5A8',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
@@ -407,14 +396,12 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 17,
     fontWeight: '600',
-    color: '#1F1F1F',
     marginBottom: 6,
   },
   emptySubtitle: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
     lineHeight: 19,
-    color: '#6A6A6A',
     textAlign: 'center',
     maxWidth: 270,
     marginBottom: 20,
@@ -423,12 +410,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#FA520F',
+    backgroundColor: Palette.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    shadowColor: '#FA520F',
+    shadowColor: Palette.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
@@ -444,9 +431,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -457,7 +442,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F1F1F',
   },
   trustBadge: {
     flexDirection: 'row',
@@ -468,6 +452,5 @@ const styles = StyleSheet.create({
   trustText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 11,
-    color: '#8A8A8A',
   },
 });

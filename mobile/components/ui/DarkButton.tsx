@@ -8,6 +8,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { BorderRadius, Typography, Palette } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export interface DarkButtonProps {
   title: string;
@@ -21,7 +22,7 @@ export interface DarkButtonProps {
 
 /**
  * Mistral AI Dark Button
- * Pure Ink #1F1F1F surface, 8px radius, white text, pressed state #3D3D3D.
+ * Pure Ink #1F1F1F surface (or #202020 in dark mode), 8px radius, white text.
  */
 export function DarkButton({
   title,
@@ -32,6 +33,7 @@ export function DarkButton({
   textStyle,
   icon,
 }: DarkButtonProps) {
+  const { isDark, colors } = useTheme();
   const [isPressed, setIsPressed] = useState(false);
 
   return (
@@ -43,7 +45,13 @@ export function DarkButton({
       disabled={disabled || loading}
       style={[
         styles.button,
-        isPressed && styles.buttonPressed,
+        {
+          backgroundColor: isDark ? colors.card : Palette.ink,
+          borderColor: isDark ? colors.border : 'transparent',
+        },
+        isPressed && {
+          backgroundColor: isDark ? colors.elevated : Palette.inkTint,
+        },
         disabled && styles.buttonDisabled,
         style,
       ]}

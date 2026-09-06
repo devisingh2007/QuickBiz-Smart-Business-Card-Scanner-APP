@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Palette, Typography, BorderRadius } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
@@ -21,6 +22,7 @@ import { contactStore } from '@/services/contact.store';
 export default function ContactDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colors, isDark } = useTheme();
 
   // If navigated with only ID, look up contact in local store
   const storedContact = useMemo(() => {
@@ -170,16 +172,19 @@ export default function ContactDetailsScreen() {
   const primaryWebsite = websites.length > 0 ? websites[0].value : null;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
       {/* Top Editorial Navigation */}
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { borderBottomColor: colors.borderSoft }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.navBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <IconSymbol name="chevron.left" size={20} color={Palette.ink} />
-          <Text style={styles.backLabel}>Back</Text>
+          <IconSymbol name="chevron.left" size={20} color={colors.textPrimary} />
+          <Text style={[styles.backLabel, { color: colors.textPrimary }]}>Back</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -193,13 +198,13 @@ export default function ContactDetailsScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Profile Card Header */}
-        <View style={styles.profileSection}>
+        <View style={[styles.profileSection, { borderBottomColor: colors.borderSoft }]}>
           <Avatar name={name} size="lg" variant="cream" style={styles.avatar} />
 
-          <Text style={styles.nameText}>{name}</Text>
+          <Text style={[styles.nameText, { color: colors.textPrimary }]}>{name}</Text>
 
           {(designation || company) && (
-            <Text style={styles.roleText}>
+            <Text style={[styles.roleText, { color: colors.textSecondary }]}>
               {[designation, company].filter(Boolean).join(' · ')}
             </Text>
           )}
@@ -222,25 +227,37 @@ export default function ContactDetailsScreen() {
           </View>
         </View>
 
-        {/* Quick Action Shortcuts (Mistral Cream Tiles with 8px radius) */}
-        <View style={styles.shortcutsRow}>
+        {/* Quick Action Shortcuts (Mistral Cream/Dark Tiles with 8px radius) */}
+        <View style={[styles.shortcutsRow, { borderBottomColor: colors.borderSoft }]}>
           <TouchableOpacity
             onPress={() => primaryPhone && handleCall(primaryPhone)}
             disabled={!primaryPhone}
             style={[
               styles.shortcutTile,
-              !primaryPhone && styles.shortcutTileDisabled,
+              isDark
+                ? {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  }
+                : {
+                    backgroundColor: Palette.cream,
+                    borderColor: Palette.beigeDeep,
+                  },
+              !primaryPhone && {
+                backgroundColor: colors.surface,
+                borderColor: colors.borderSoft,
+              },
             ]}
           >
             <IconSymbol
               name="phone.fill"
               size={18}
-              color={primaryPhone ? Palette.primary : Palette.stone}
+              color={primaryPhone ? Palette.primary : colors.textMuted}
             />
             <Text
               style={[
                 styles.shortcutLabel,
-                !primaryPhone && styles.shortcutLabelDisabled,
+                { color: primaryPhone ? colors.textPrimary : colors.textMuted },
               ]}
             >
               Call
@@ -252,18 +269,30 @@ export default function ContactDetailsScreen() {
             disabled={!primaryEmail}
             style={[
               styles.shortcutTile,
-              !primaryEmail && styles.shortcutTileDisabled,
+              isDark
+                ? {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  }
+                : {
+                    backgroundColor: Palette.cream,
+                    borderColor: Palette.beigeDeep,
+                  },
+              !primaryEmail && {
+                backgroundColor: colors.surface,
+                borderColor: colors.borderSoft,
+              },
             ]}
           >
             <IconSymbol
               name="envelope.fill"
               size={18}
-              color={primaryEmail ? Palette.primary : Palette.stone}
+              color={primaryEmail ? Palette.primary : colors.textMuted}
             />
             <Text
               style={[
                 styles.shortcutLabel,
-                !primaryEmail && styles.shortcutLabelDisabled,
+                { color: primaryEmail ? colors.textPrimary : colors.textMuted },
               ]}
             >
               Email
@@ -275,18 +304,30 @@ export default function ContactDetailsScreen() {
             disabled={!primaryWebsite}
             style={[
               styles.shortcutTile,
-              !primaryWebsite && styles.shortcutTileDisabled,
+              isDark
+                ? {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  }
+                : {
+                    backgroundColor: Palette.cream,
+                    borderColor: Palette.beigeDeep,
+                  },
+              !primaryWebsite && {
+                backgroundColor: colors.surface,
+                borderColor: colors.borderSoft,
+              },
             ]}
           >
             <IconSymbol
               name="globe"
               size={18}
-              color={primaryWebsite ? Palette.primary : Palette.stone}
+              color={primaryWebsite ? Palette.primary : colors.textMuted}
             />
             <Text
               style={[
                 styles.shortcutLabel,
-                !primaryWebsite && styles.shortcutLabelDisabled,
+                { color: primaryWebsite ? colors.textPrimary : colors.textMuted },
               ]}
             >
               Website
@@ -298,20 +339,20 @@ export default function ContactDetailsScreen() {
         {/* CONTACT SECTION */}
         {(phones.length > 0 || emails.length > 0) && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>CONTACT</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>CONTACT</Text>
 
             {phones.map((p, idx) => (
               <TouchableOpacity
                 key={`phone-${idx}`}
-                style={styles.fieldRow}
+                style={[styles.fieldRow, { borderBottomColor: colors.borderSoft }]}
                 onPress={() => handleCall(p.value)}
                 onLongPress={() => handleCopy(p.value, 'Phone number')}
               >
                 <View style={styles.fieldInfo}>
-                  <Text style={styles.fieldLabel}>
+                  <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
                     {p.label || p.type || 'Phone'}
                   </Text>
-                  <Text style={styles.fieldValue}>{p.value}</Text>
+                  <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>{p.value}</Text>
                 </View>
                 <IconSymbol
                   name="phone.fill"
@@ -324,13 +365,15 @@ export default function ContactDetailsScreen() {
             {emails.map((e, idx) => (
               <TouchableOpacity
                 key={`email-${idx}`}
-                style={styles.fieldRow}
+                style={[styles.fieldRow, { borderBottomColor: colors.borderSoft }]}
                 onPress={() => handleEmail(e.value)}
                 onLongPress={() => handleCopy(e.value, 'Email address')}
               >
                 <View style={styles.fieldInfo}>
-                  <Text style={styles.fieldLabel}>Email ({e.type || 'Work'})</Text>
-                  <Text style={styles.fieldValue}>{e.value}</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
+                    Email ({e.type || 'Work'})
+                  </Text>
+                  <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>{e.value}</Text>
                 </View>
                 <IconSymbol
                   name="envelope.fill"
@@ -345,22 +388,22 @@ export default function ContactDetailsScreen() {
         {/* BUSINESS SECTION */}
         {(company || designation) && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>BUSINESS</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>BUSINESS</Text>
 
             {company ? (
-              <View style={styles.fieldRow}>
+              <View style={[styles.fieldRow, { borderBottomColor: colors.borderSoft }]}>
                 <View style={styles.fieldInfo}>
-                  <Text style={styles.fieldLabel}>Company</Text>
-                  <Text style={styles.fieldValue}>{company}</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Company</Text>
+                  <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>{company}</Text>
                 </View>
               </View>
             ) : null}
 
             {designation ? (
-              <View style={styles.fieldRow}>
+              <View style={[styles.fieldRow, { borderBottomColor: colors.borderSoft }]}>
                 <View style={styles.fieldInfo}>
-                  <Text style={styles.fieldLabel}>Role / Designation</Text>
-                  <Text style={styles.fieldValue}>{designation}</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Role / Designation</Text>
+                  <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>{designation}</Text>
                 </View>
               </View>
             ) : null}
@@ -370,14 +413,14 @@ export default function ContactDetailsScreen() {
         {/* LOCATION SECTION */}
         {officeAddress ? (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>LOCATION</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>LOCATION</Text>
             <TouchableOpacity
-              style={styles.fieldRow}
+              style={[styles.fieldRow, { borderBottomColor: colors.borderSoft }]}
               onLongPress={() => handleCopy(officeAddress, 'Address')}
             >
               <View style={styles.fieldInfo}>
-                <Text style={styles.fieldLabel}>Office Address</Text>
-                <Text style={styles.fieldValue}>{officeAddress}</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Office Address</Text>
+                <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>{officeAddress}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -386,16 +429,16 @@ export default function ContactDetailsScreen() {
         {/* ONLINE SECTION */}
         {websites.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>ONLINE</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>ONLINE</Text>
             {websites.map((w, idx) => (
               <TouchableOpacity
                 key={`web-${idx}`}
-                style={styles.fieldRow}
+                style={[styles.fieldRow, { borderBottomColor: colors.borderSoft }]}
                 onPress={() => handleWebsite(w.value)}
                 onLongPress={() => handleCopy(w.value, 'Website')}
               >
                 <View style={styles.fieldInfo}>
-                  <Text style={styles.fieldLabel}>Website</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Website</Text>
                   <Text style={[styles.fieldValue, { color: Palette.primary }]}>
                     {w.value}
                   </Text>
@@ -425,7 +468,6 @@ export default function ContactDetailsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Palette.canvas,
   },
   navBar: {
     height: 48,
@@ -434,7 +476,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Palette.hairlineSoft,
   },
   navBtn: {
     flexDirection: 'row',
@@ -443,7 +484,6 @@ const styles = StyleSheet.create({
   backLabel: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.ink,
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -465,7 +505,6 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
     paddingHorizontal: 24,
     borderBottomWidth: 1,
-    borderBottomColor: Palette.hairlineSoft,
   },
   avatar: {
     marginBottom: 16,
@@ -474,7 +513,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 26,
     fontWeight: '400',
-    color: Palette.ink,
     textAlign: 'center',
     letterSpacing: -0.5,
     marginBottom: 6,
@@ -482,7 +520,6 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.slate,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -496,31 +533,20 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Palette.hairlineSoft,
   },
   shortcutTile: {
     flex: 1,
     height: 52,
-    backgroundColor: Palette.cream,
     borderWidth: 1,
-    borderColor: Palette.beigeDeep,
-    borderRadius: BorderRadius.md, // 8px radius
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  shortcutTileDisabled: {
-    backgroundColor: Palette.surface,
-    borderColor: Palette.hairline,
   },
   shortcutLabel: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 11,
     fontWeight: '600',
-    color: Palette.ink,
     marginTop: 4,
-  },
-  shortcutLabelDisabled: {
-    color: Palette.stone,
   },
   section: {
     paddingHorizontal: 20,
@@ -530,7 +556,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 11,
     fontWeight: '700',
-    color: Palette.stone,
     letterSpacing: 1,
     marginBottom: 12,
   },
@@ -540,7 +565,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Palette.hairlineSoft,
   },
   fieldInfo: {
     flex: 1,
@@ -548,13 +572,11 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 12,
-    color: Palette.stone,
     marginBottom: 2,
   },
   fieldValue: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 15,
-    color: Palette.ink,
     fontWeight: '500',
   },
   deleteSection: {

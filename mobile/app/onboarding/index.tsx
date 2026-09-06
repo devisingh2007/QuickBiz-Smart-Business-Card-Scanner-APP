@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Palette, Typography, BorderRadius } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SunsetStripe } from '@/components/ui/SunsetStripe';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const completeOnboarding = async () => {
@@ -61,7 +63,10 @@ export default function OnboardingScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
       {/* Top Header with Skip */}
       <View style={styles.header}>
         {currentSlide > 0 ? (
@@ -70,8 +75,8 @@ export default function OnboardingScreen() {
             style={styles.backBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <IconSymbol name="chevron.left" size={18} color={Palette.ink} />
-            <Text style={styles.backText}>Back</Text>
+            <IconSymbol name="chevron.left" size={18} color={colors.textPrimary} />
+            <Text style={[styles.backText, { color: colors.textSecondary }]}>Back</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ width: 60 }} />
@@ -82,7 +87,7 @@ export default function OnboardingScreen() {
             onPress={handleSkip}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={[styles.skipText, { color: colors.primary }]}>Skip</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
@@ -91,7 +96,14 @@ export default function OnboardingScreen() {
 
       {/* Slide Content */}
       <View style={styles.slideContainer}>
-        <View style={styles.iconTile}>
+        <View
+          style={[
+            styles.iconTile,
+            isDark
+              ? { backgroundColor: colors.card, borderColor: colors.border }
+              : { backgroundColor: Palette.cream, borderColor: Palette.beigeDeep },
+          ]}
+        >
           <IconSymbol
             name={slides[currentSlide].icon as any}
             size={40}
@@ -99,8 +111,10 @@ export default function OnboardingScreen() {
           />
         </View>
 
-        <Text style={styles.title}>{slides[currentSlide].title}</Text>
-        <Text style={styles.description}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {slides[currentSlide].title}
+        </Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
           {slides[currentSlide].description}
         </Text>
       </View>
@@ -114,7 +128,11 @@ export default function OnboardingScreen() {
               key={index}
               style={[
                 styles.indicator,
-                currentSlide === index && styles.indicatorActive,
+                { backgroundColor: colors.border },
+                currentSlide === index && [
+                  styles.indicatorActive,
+                  { backgroundColor: colors.primary },
+                ],
               ]}
             />
           ))}
@@ -139,7 +157,6 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Palette.canvas,
     justifyContent: 'space-between',
   },
   header: {
@@ -156,13 +173,11 @@ const styles = StyleSheet.create({
   backText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.slate,
     marginLeft: 4,
   },
   skipText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: Palette.primary,
     fontWeight: '500',
   },
   slideContainer: {
@@ -173,10 +188,8 @@ const styles = StyleSheet.create({
   iconTile: {
     width: 88,
     height: 88,
-    borderRadius: BorderRadius.lg, // 12px radius
-    backgroundColor: Palette.cream,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: Palette.beigeDeep,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 32,
@@ -185,7 +198,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.serif,
     fontSize: 26,
     fontWeight: '400',
-    color: Palette.ink,
     textAlign: 'center',
     letterSpacing: -0.5,
     lineHeight: 32,
@@ -194,7 +206,6 @@ const styles = StyleSheet.create({
   description: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 15,
-    color: Palette.slate,
     textAlign: 'center',
     lineHeight: 22,
     maxWidth: 320,
@@ -214,11 +225,9 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Palette.hairlineStrong,
   },
   indicatorActive: {
     width: 24,
-    backgroundColor: Palette.primary,
   },
   buttonContainer: {
     width: '100%',

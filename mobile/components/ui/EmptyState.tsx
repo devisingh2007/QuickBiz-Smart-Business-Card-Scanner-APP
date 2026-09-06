@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { Palette, BorderRadius, Typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { PrimaryButton } from './PrimaryButton';
 import { IconSymbol } from './icon-symbol';
 
@@ -29,13 +30,27 @@ export function EmptyState({
   onSecondaryAction,
   style,
 }: EmptyStateProps) {
+  const { colors } = useTheme();
+
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.iconTile}>
+      <View
+        style={[
+          styles.iconTile,
+          {
+            backgroundColor: colors.surfaceCream,
+            borderColor: colors.borderBeige,
+          },
+        ]}
+      >
         <IconSymbol name={iconName} size={28} color={Palette.primary} />
       </View>
-      <Text style={[styles.title, Typography.heading3]}>{title}</Text>
-      <Text style={[styles.description, Typography.bodySm]}>{description}</Text>
+      <Text style={[styles.title, Typography.heading3, { color: colors.textPrimary }]}>
+        {title}
+      </Text>
+      <Text style={[styles.description, Typography.bodySm, { color: colors.textSecondary }]}>
+        {description}
+      </Text>
       {actionTitle && onAction && (
         <PrimaryButton
           title={actionTitle}
@@ -49,7 +64,9 @@ export function EmptyState({
           activeOpacity={0.7}
           style={styles.secondaryBtn}
         >
-          <Text style={styles.secondaryBtnText}>{secondaryActionTitle}</Text>
+          <Text style={[styles.secondaryBtnText, { color: colors.textPrimary }]}>
+            {secondaryActionTitle}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -67,20 +84,16 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: BorderRadius.lg, // 12px radius
-    backgroundColor: Palette.cream,
     borderWidth: 1,
-    borderColor: Palette.beigeDeep,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   title: {
-    color: Palette.ink,
     textAlign: 'center',
     marginBottom: 8,
   },
   description: {
-    color: Palette.stone,
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
@@ -98,7 +111,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
     fontWeight: '600',
-    color: Palette.ink,
     textDecorationLine: 'underline',
   },
 });

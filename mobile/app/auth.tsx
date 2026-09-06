@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Typography, BorderRadius, Palette } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Spacing, Typography, BorderRadius, Palette } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SunsetStripe } from '@/components/ui/SunsetStripe';
@@ -21,11 +21,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { apiService } from '@/services/api.service';
 import { contactStore } from '@/services/contact.store';
 
-
 export default function AuthScreen() {
   const router = useRouter();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+  const { colors, isDark } = useTheme();
 
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
@@ -115,22 +113,34 @@ export default function AuthScreen() {
             </Text>
           </View>
 
-          {/* Form Panel (Cream surface with 12px radius & beige border) */}
+          {/* Form Panel (Cream surface in Light Mode, Dark Card in Dark Mode) */}
           <View
             style={[
               styles.formPanel,
               {
-                backgroundColor: colors.surfaceCream,
-                borderColor: colors.borderBeige,
+                backgroundColor: isDark ? colors.card : colors.surfaceCream,
+                borderColor: isDark ? colors.cardBorder : colors.borderBeige,
               },
             ]}
           >
             {/* Segmented Switch */}
-            <View style={[styles.segmentContainer, { backgroundColor: colors.surface, borderColor: colors.borderBeige }]}>
+            <View
+              style={[
+                styles.segmentContainer,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: isDark ? colors.border : colors.borderBeige,
+                },
+              ]}
+            >
               <TouchableOpacity
                 style={[
                   styles.segmentBtn,
-                  isLogin && { backgroundColor: Palette.ink },
+                  isLogin && {
+                    backgroundColor: isDark ? colors.card : Palette.ink,
+                    borderWidth: isDark ? 1 : 0,
+                    borderColor: isDark ? colors.primary : 'transparent',
+                  },
                 ]}
                 onPress={() => {
                   setIsLogin(true);
@@ -142,7 +152,13 @@ export default function AuthScreen() {
                 <Text
                   style={[
                     styles.segmentText,
-                    { color: isLogin ? '#FFFFFF' : colors.textMuted },
+                    {
+                      color: isLogin
+                        ? isDark
+                          ? colors.primary
+                          : '#FFFFFF'
+                        : colors.textMuted,
+                    },
                     isLogin && { fontWeight: '600' },
                   ]}
                 >
@@ -153,7 +169,11 @@ export default function AuthScreen() {
               <TouchableOpacity
                 style={[
                   styles.segmentBtn,
-                  !isLogin && { backgroundColor: Palette.ink },
+                  !isLogin && {
+                    backgroundColor: isDark ? colors.card : Palette.ink,
+                    borderWidth: isDark ? 1 : 0,
+                    borderColor: isDark ? colors.primary : 'transparent',
+                  },
                 ]}
                 onPress={() => {
                   setIsLogin(false);
@@ -165,7 +185,13 @@ export default function AuthScreen() {
                 <Text
                   style={[
                     styles.segmentText,
-                    { color: !isLogin ? '#FFFFFF' : colors.textMuted },
+                    {
+                      color: !isLogin
+                        ? isDark
+                          ? colors.primary
+                          : '#FFFFFF'
+                        : colors.textMuted,
+                    },
                     !isLogin && { fontWeight: '600' },
                   ]}
                 >

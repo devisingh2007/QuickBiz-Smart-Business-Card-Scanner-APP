@@ -27,7 +27,7 @@ export const Palette = {
   creamDeeper: '#FFF0C2',
   beigeDeep: '#E6D5A8',
 
-  // Dark & Neutral Typography
+  // Dark & Neutral Typography (Light Mode)
   ink: '#1F1F1F',
   inkTint: '#3D3D3D',
   charcoal: '#2C2C2C',
@@ -36,17 +36,31 @@ export const Palette = {
   stone: '#8A8A8A',
   muted: '#A8A8A8',
 
-  // Borders & Dividers
+  // Borders & Dividers (Light Mode)
   hairline: '#E5E5E5',
   hairlineSoft: '#EDEDED',
   hairlineStrong: '#C7C7C7',
 
-  // Canvas & Surfaces
+  // Canvas & Surfaces (Light Mode)
   canvas: '#FFFFFF',
   surface: '#FAFAFA',
   surfaceCream: '#FFF8E0',
   surfaceCreamSoft: '#FFFAEB',
   surfaceCode: '#1C1C1E',
+
+  // Dark Mode Tokens (per specification)
+  darkBackground: '#111111',
+  darkSurface: '#1A1A1A',
+  darkCard: '#202020',
+  darkElevated: '#262626',
+  darkBorder: '#333333',
+  darkSoftBorder: '#292929',
+  darkTextPrimary: '#FFFFFF',
+  darkTextSecondary: '#D0D0D0',
+  darkTextTertiary: '#9A9A9A',
+  darkTextMuted: '#707070',
+  darkCreamSurface: '#242017',
+  darkCreamBorder: '#3E3524',
 
   // Contrasts
   onDark: '#FFFFFF',
@@ -95,11 +109,15 @@ export const Colors = {
     surfaceCreamLight: Palette.creamLight,
     surfaceCreamDeeper: Palette.creamDeeper,
     surfaceCode: Palette.surfaceCode,
+    card: Palette.canvas,
+    cardBorder: Palette.hairlineSoft,
+    elevated: Palette.surface,
 
     // Typography
     text: Palette.ink,
     textPrimary: Palette.ink,
     textSecondary: Palette.slate,
+    textTertiary: Palette.stone,
     textMuted: Palette.steel,
     textStone: Palette.stone,
     textDisabled: Palette.muted,
@@ -107,9 +125,15 @@ export const Colors = {
     onCream: Palette.onCream,
     onDark: Palette.onDark,
 
+    // Inputs
+    inputBackground: Palette.canvas,
+    inputBorder: Palette.hairlineSoft,
+    inputPlaceholder: Palette.stone,
+
     // Borders
     border: Palette.hairlineSoft,
     borderHairline: Palette.hairline,
+    borderSoft: Palette.hairlineSoft,
     borderStrong: Palette.hairlineStrong,
     borderBeige: Palette.beigeDeep,
 
@@ -118,6 +142,8 @@ export const Colors = {
     icon: Palette.steel,
     tabIconDefault: Palette.steel,
     tabIconSelected: Palette.primary,
+    tabBarBackground: Palette.canvas,
+    tabBarBorder: Palette.hairline,
 
     // Semantic
     success: Palette.success,
@@ -134,48 +160,60 @@ export const Colors = {
     primaryDark: Palette.primaryDeep,
     primaryLight: '#2C1A14',
     primaryMuted: '#3D251C',
-    secondary: '#E5E5E5',
+    secondary: '#FFFFFF',
     accent: Palette.primary,
 
     // Surfaces
-    background: '#121214',
-    surface: Palette.surfaceCode,
-    surfaceMuted: '#161618',
-    surfaceCream: '#262118',
-    surfaceCreamLight: '#1F1B14',
-    surfaceCreamDeeper: '#332B1E',
-    surfaceCode: '#161618',
+    background: Palette.darkBackground, // #111111
+    surface: Palette.darkSurface,       // #1A1A1A
+    surfaceMuted: Palette.darkCard,     // #202020
+    surfaceCream: Palette.darkCreamSurface, // #242017
+    surfaceCreamLight: '#1C1913',
+    surfaceCreamDeeper: '#2E271B',
+    surfaceCode: Palette.darkSurface,
+    card: Palette.darkCard,             // #202020
+    cardBorder: Palette.darkBorder,     // #333333
+    elevated: Palette.darkElevated,     // #262626
 
     // Typography
-    text: '#F5F5F5',
-    textPrimary: '#F5F5F5',
-    textSecondary: Palette.onDarkMuted,
-    textMuted: Palette.steel,
-    textStone: Palette.stone,
+    text: Palette.darkTextPrimary,      // #FFFFFF
+    textPrimary: Palette.darkTextPrimary, // #FFFFFF
+    textSecondary: Palette.darkTextSecondary, // #D0D0D0
+    textTertiary: Palette.darkTextTertiary,   // #9A9A9A
+    textMuted: Palette.darkTextMuted,         // #707070
+    textStone: Palette.darkTextTertiary,
     textDisabled: '#555555',
     textLight: '#FFFFFF',
-    onCream: '#F5F5F5',
+    onCream: Palette.darkTextPrimary,
     onDark: '#FFFFFF',
 
+    // Inputs
+    inputBackground: Palette.darkSurface, // #1A1A1A
+    inputBorder: Palette.darkBorder,      // #333333
+    inputPlaceholder: Palette.darkTextMuted, // #707070
+
     // Borders
-    border: '#2C2C2E',
-    borderHairline: '#242426',
-    borderStrong: '#3A3A3C',
-    borderBeige: '#3D3425',
+    border: Palette.darkBorder,           // #333333
+    borderHairline: Palette.darkSoftBorder, // #292929
+    borderSoft: Palette.darkSoftBorder,
+    borderStrong: '#404040',
+    borderBeige: Palette.darkCreamBorder, // #3E3524
 
     // Navigation & Icons
     tint: Palette.primary,
-    icon: Palette.onDarkMuted,
-    tabIconDefault: Palette.steel,
+    icon: Palette.darkTextSecondary,
+    tabIconDefault: Palette.darkTextMuted,
     tabIconSelected: Palette.primary,
+    tabBarBackground: Palette.darkSurface, // #1A1A1A
+    tabBarBorder: Palette.darkBorder,     // #333333
 
     // Semantic
     success: '#34D399',
-    successLight: '#064E3B',
+    successLight: '#0E3A24',
     warning: '#FBBF24',
-    warningLight: '#78350F',
+    warningLight: '#3D2800',
     error: '#F87171',
-    errorLight: '#7F1D1D',
+    errorLight: '#451212',
     info: '#60A5FA',
     infoLight: '#1E3A8A',
   },
