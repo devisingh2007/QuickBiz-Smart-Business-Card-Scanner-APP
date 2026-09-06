@@ -8,12 +8,14 @@ import {
   Image,
   Alert,
   Platform,
+  Linking,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Typography, BorderRadius, Palette } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Spacing, Typography, BorderRadius } from '@/constants/theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { DarkButton } from '@/components/ui/DarkButton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -22,14 +24,14 @@ import { ocrService } from '@/services/ocr.service';
 
 export default function ScanScreen() {
   const router = useRouter();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+  const insets = useSafeAreaInsets();
 
   const cameraRef = useRef<any>(null);
   const [permission, requestPermission] = useCameraPermissions();
 
   const [scanState, setScanState] = useState<'scan' | 'preview' | 'ocr'>('scan');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [flashOn, setFlashOn] = useState(false);
   const isWebPlatform = Platform.OS === 'web';
 
   const handleEnterManually = () => {
@@ -37,6 +39,50 @@ export default function ScanScreen() {
       pathname: '/review',
       params: { category: 'Other' },
     });
+  };
+
+  const handlePickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Photo Library Access Required',
+          'QuickBiz requires permission to access your photo gallery to select business card images for on-device recognition.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 1,
+        allowsMultipleSelection: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedUri = result.assets[0].uri;
+      if (selectedUri) {
+        setPhotoUri(selectedUri);
+        setScanState('preview');
+      }
+    } catch (err: any) {
+      console.warn('Gallery picker error:', err);
+      Alert.alert(
+        'Gallery Error',
+        'Could not open photo library. Please try again or enter details manually.',
+        [
+          { text: 'Enter Manually', onPress: handleEnterManually },
+          { text: 'OK', style: 'default' },
+        ]
+      );
+    }
   };
 
   const handleCapture = async () => {
@@ -68,6 +114,10 @@ export default function ScanScreen() {
     setScanState('scan');
   };
 
+  const toggleFlash = () => {
+    setFlashOn((prev) => !prev);
+  };
+
   const handleUsePhoto = async () => {
     if (!photoUri) return;
     setScanState('ocr');
@@ -95,7 +145,7 @@ export default function ScanScreen() {
     } catch (error: any) {
       let alertTitle = "Couldn't Read Card";
       let alertMessage =
-        "Couldn't read this business card clearly. Please retake the photo or enter details manually.";
+        "Couldn't read this business card clearly. Please retake the photo, choose another image from gallery, or enter details manually.";
 
       if (error.message === 'OCR_NATIVE_UNAVAILABLE') {
         alertTitle = 'Scanning Unavailable';
@@ -111,10 +161,18 @@ export default function ScanScreen() {
       } else if (error.message === 'OCR_ENGINE_ERROR') {
         alertTitle = 'Recognition Engine Error';
         alertMessage =
-          'The on-device text recognition engine encountered an issue. Please retake the photo.';
+          'The on-device text recognition engine encountered an issue. Please retake the photo or select another image.';
       }
 
       Alert.alert(alertTitle, alertMessage, [
+        {
+          text: 'Choose from Gallery',
+          onPress: async () => {
+            setPhotoUri(null);
+            setScanState('scan');
+            await handlePickFromGallery();
+          },
+        },
         {
           text: 'Enter Manually',
           onPress: async () => {
@@ -140,34 +198,45 @@ export default function ScanScreen() {
       style={[
         styles.container,
         {
-          backgroundColor: colors.background,
+          backgroundColor: '#11101C',
           justifyContent: 'center',
           alignItems: 'center',
           padding: Spacing.xl,
         },
       ]}
     >
+      <StatusBar barStyle="light-content" backgroundColor="#11101C" />
       <View
         style={[
           styles.fallbackIconCircle,
           {
-            backgroundColor: colors.surfaceCream,
-            borderColor: colors.borderBeige,
+            backgroundColor: '#252431',
+            borderColor: 'rgba(255, 255, 255, 0.15)',
           },
         ]}
       >
-        <IconSymbol name="camera.fill" size={32} color={Palette.primary} />
+        <IconSymbol name="camera.fill" size={32} color="#FA520F" />
       </View>
-      <Text style={[styles.fallbackTitle, { color: colors.textPrimary }]}>{title}</Text>
-      <Text style={[styles.fallbackSub, { color: colors.textSecondary }]}>{message}</Text>
-      <PrimaryButton
-        title="Enter Details Manually"
-        onPress={handleEnterManually}
-        style={styles.fallbackBtn}
-      />
+      <Text style={[styles.fallbackTitle, { color: '#FFFFFF' }]}>{title}</Text>
+      <Text style={[styles.fallbackSub, { color: '#D0D0D5' }]}>{message}</Text>
+
+      <View style={{ gap: Spacing.md, width: '100%', maxWidth: 280, alignItems: 'center' }}>
+        <PrimaryButton
+          title="Choose from Gallery"
+          onPress={handlePickFromGallery}
+          icon={<IconSymbol name="photo.on.rectangle" size={16} color="#FFFFFF" />}
+          style={{ width: '100%' }}
+        />
+        <DarkButton
+          title="Enter Details Manually"
+          onPress={handleEnterManually}
+          style={{ width: '100%' }}
+        />
+      </View>
+
       {!isWebPlatform && (
         <TouchableOpacity onPress={requestPermission} style={{ marginTop: Spacing.lg }}>
-          <Text style={{ color: Palette.primary, ...Typography.bodySmMedium }}>
+          <Text style={{ color: '#FA520F', ...Typography.bodySmMedium }}>
             Grant Camera Permissions
           </Text>
         </TouchableOpacity>
@@ -177,8 +246,8 @@ export default function ScanScreen() {
 
   if (isWebPlatform) {
     return renderManualEntryLanding(
-      'Manual Entry Mode',
-      'Card scanning using native camera is unavailable in web browsers. You can input contacts directly using manual entry.'
+      'Manual & Gallery Mode',
+      'Direct camera scanning is unavailable in web browsers. You can select an existing card photo from gallery or enter details manually.'
     );
   }
 
@@ -188,15 +257,16 @@ export default function ScanScreen() {
         style={[
           styles.container,
           {
-            backgroundColor: Palette.surfaceCode,
+            backgroundColor: '#11101C',
             justifyContent: 'center',
             alignItems: 'center',
           },
         ]}
       >
-        <ActivityIndicator size="small" color={Palette.primary} />
-        <Text style={[styles.loadingText, { color: Palette.onDarkMuted }]}>
-          Initializing camera hardware
+        <StatusBar barStyle="light-content" backgroundColor="#11101C" />
+        <ActivityIndicator size="small" color="#FA520F" />
+        <Text style={[styles.loadingText, { color: '#D0D0D5' }]}>
+          Initializing camera hardware...
         </Text>
       </SafeAreaView>
     );
@@ -205,78 +275,170 @@ export default function ScanScreen() {
   if (!permission.granted) {
     return renderManualEntryLanding(
       'Camera Permission Required',
-      'QuickBiz requires camera access to scan business cards. You can grant access or use manual contact entry.'
+      'QuickBiz can scan cards using your camera or import photos directly from your device gallery.'
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: Palette.surfaceCode }]} edges={['top', 'left', 'right']}>
-      {/* Top Header */}
+    <SafeAreaView style={[styles.container, { backgroundColor: '#11101C' }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#11101C" />
+
+      {/* 1. Top Header */}
       <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Text style={styles.headerTitle}>Scan Business Card</Text>
-        </View>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.headerBackBtn}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <IconSymbol name="arrow.left" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Scanner</Text>
 
         <TouchableOpacity
-          onPress={handleEnterManually}
-          style={styles.manualEntryHeaderBtn}
-          activeOpacity={0.8}
+          onPress={() => router.push('/(tabs)/settings')}
+          style={styles.headerUserBtn}
+          activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel="Enter contact manually"
+          accessibilityLabel="Account settings"
         >
-          <IconSymbol name="pencil" size={13} color="#FFFFFF" />
-          <Text style={styles.manualEntryHeaderText}>Manual</Text>
+          <IconSymbol name="person.fill" size={17} color="#D0D0D5" />
         </TouchableOpacity>
       </View>
 
-      {/* Camera / Scan state */}
+      {/* 2. Main Viewport / Camera / Preview / OCR */}
       {scanState === 'scan' && (
-        <View style={{ flex: 1 }}>
+        <View style={styles.scannerBody}>
+          {/* Live Camera View */}
           <View style={styles.cameraWrapper}>
-            <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} />
+            <CameraView
+              style={StyleSheet.absoluteFill}
+              ref={cameraRef}
+              enableTorch={flashOn}
+            />
 
-            <View pointerEvents="box-none" style={styles.overlay}>
-              {/* Frame Viewfinder */}
+            {/* Dark Camera Overlay with Detection Frame & Top Controls */}
+            <View pointerEvents="box-none" style={styles.cameraOverlay}>
+              {/* Top Scanner Controls Bar */}
+              <View style={styles.topControlsRow}>
+                {/* Left: Close / Reset button */}
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={styles.topControlCircle}
+                  activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close scanner"
+                >
+                  <IconSymbol name="xmark" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+
+                {/* Center: On-Device OCR status pill */}
+                <View style={styles.autoDetectPill}>
+                  <IconSymbol name="sparkles" size={13} color="#FA520F" />
+                  <Text style={styles.autoDetectText}>ON-DEVICE OCR</Text>
+                </View>
+
+                {/* Right: Flash toggle button */}
+                <TouchableOpacity
+                  onPress={toggleFlash}
+                  style={[styles.topControlCircle, flashOn && styles.topControlActive]}
+                  activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel={flashOn ? 'Turn off flash' : 'Turn on flash'}
+                >
+                  <IconSymbol
+                    name={flashOn ? 'bolt.fill' : 'bolt.slash.fill'}
+                    size={16}
+                    color={flashOn ? '#FA520F' : '#FFFFFF'}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Status Indicator Pill */}
+              <View style={styles.statusPillWrapper}>
+                <View style={styles.statusPill}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.statusPillText}>Hold steady • Align edges inside frame</Text>
+                </View>
+              </View>
+
+              {/* Business Card Detection Frame */}
               <View style={styles.viewFinderContainer} pointerEvents="none">
                 <View style={styles.businessCardFrame}>
-                  {/* Mistral Orange Corner Accents (#FA520F) */}
+                  {/* QuickBiz Sunset Orange Corner Accents (#FA520F) */}
                   <View style={[styles.cornerBracket, styles.cornerTL]} />
                   <View style={[styles.cornerBracket, styles.cornerTR]} />
                   <View style={[styles.cornerBracket, styles.cornerBL]} />
                   <View style={[styles.cornerBracket, styles.cornerBR]} />
+                </View>
+              </View>
 
-                  <View style={styles.guideBadge}>
-                    <Text style={styles.guideText}>Position business card within frame</Text>
-                  </View>
+              {/* Instructions below frame */}
+              <View style={styles.instructionContainer}>
+                <Text style={styles.instructionTitle}>
+                  Place the business card inside the frame
+                </Text>
+                <View style={styles.instructionSubRow}>
+                  <IconSymbol name="lock.fill" size={12} color="#D0D0D5" />
+                  <Text style={styles.instructionSubtitle}>
+                    Google ML Kit On-Device Recognition • 100% Private
+                  </Text>
                 </View>
               </View>
             </View>
           </View>
 
-          <View style={styles.instructionContainer}>
-            <Text style={styles.instructionText}>
-              Hold steady in clear light. Text will be recognized on-device.
-            </Text>
-          </View>
+          {/* 3. Bottom Action Controls Bar */}
+          <View style={[styles.bottomControlsBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            {/* Gallery Action */}
+            <TouchableOpacity
+              onPress={handlePickFromGallery}
+              activeOpacity={0.75}
+              style={styles.bottomActionButton}
+              accessibilityRole="button"
+              accessibilityLabel="Choose card from Gallery"
+            >
+              <View style={styles.bottomActionCircle}>
+                <IconSymbol name="photo.on.rectangle" size={21} color="#FFFFFF" />
+              </View>
+              <Text style={styles.bottomActionLabel}>Gallery</Text>
+            </TouchableOpacity>
 
-          {/* Capture Controls */}
-          <View style={styles.controlsContainer}>
+            {/* Center Primary Capture Button */}
             <TouchableOpacity
               onPress={handleCapture}
               activeOpacity={0.75}
-              style={styles.captureOuterCircle}
+              style={styles.shutterOuterRing}
               accessibilityRole="button"
-              accessibilityLabel="Capture photo"
+              accessibilityLabel="Take business card photo"
             >
-              <View style={styles.captureInnerCircle} />
+              <View style={styles.shutterInnerDisc}>
+                <IconSymbol name="camera.fill" size={24} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+
+            {/* Manual Action */}
+            <TouchableOpacity
+              onPress={handleEnterManually}
+              activeOpacity={0.75}
+              style={styles.bottomActionButton}
+              accessibilityRole="button"
+              accessibilityLabel="Enter contact details manually"
+            >
+              <View style={styles.bottomActionCircle}>
+                <IconSymbol name="pencil" size={19} color="#FFFFFF" />
+              </View>
+              <Text style={styles.bottomActionLabel}>Manual</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Preview state */}
+      {/* Preview State */}
       {scanState === 'preview' && (
-        <View style={styles.previewContainer}>
+        <View style={[styles.previewContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <View style={styles.previewImageContainer}>
             {photoUri && (
               <Image source={{ uri: photoUri }} style={styles.previewImage} resizeMode="contain" />
@@ -286,7 +448,7 @@ export default function ScanScreen() {
           <View style={styles.previewInfo}>
             <Text style={styles.previewTitle}>Review Card Photo</Text>
             <Text style={styles.previewSubtitle}>
-              Ensure card text is in sharp focus before running optical character recognition.
+              Ensure contact information, name, and phone are sharp and clear before running on-device recognition.
             </Text>
           </View>
 
@@ -306,43 +468,28 @@ export default function ScanScreen() {
         </View>
       )}
 
+      {/* OCR Processing State */}
       {scanState === 'ocr' && (
-        <View style={[styles.ocrContainer, { backgroundColor: colors.background }]}>
-          <View
-            style={[
-              styles.ocrPanel,
-              {
-                backgroundColor: colors.surfaceCream,
-                borderColor: colors.borderBeige,
-              },
-            ]}
-          >
-            <ActivityIndicator size="small" color={Palette.primary} style={styles.ocrSpinner} />
-            <Text style={[styles.ocrTitle, { color: colors.textPrimary }]}>
-              Reading your card
-            </Text>
-            <Text style={[styles.ocrSubtitle, { color: colors.textSecondary }]}>
+        <View style={[styles.ocrContainer, { backgroundColor: '#11101C' }]}>
+          <View style={styles.ocrPanel}>
+            <ActivityIndicator size="small" color="#FA520F" style={styles.ocrSpinner} />
+            <Text style={styles.ocrTitle}>Reading your card</Text>
+            <Text style={styles.ocrSubtitle}>
               Extracting contact details and structuring fields on-device
             </Text>
 
             <View style={styles.ocrSteps}>
               <View style={styles.ocrStepRow}>
-                <IconSymbol name="checkmark.circle.fill" size={15} color={Palette.primary} />
-                <Text style={[styles.ocrStepText, { color: colors.textPrimary }]}>
-                  Reading layout geometry
-                </Text>
+                <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
+                <Text style={styles.ocrStepText}>Reading layout geometry</Text>
               </View>
               <View style={styles.ocrStepRow}>
-                <IconSymbol name="checkmark.circle.fill" size={15} color={Palette.primary} />
-                <Text style={[styles.ocrStepText, { color: colors.textPrimary }]}>
-                  Analyzing typography with ML Kit
-                </Text>
+                <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
+                <Text style={styles.ocrStepText}>Analyzing typography with ML Kit</Text>
               </View>
               <View style={styles.ocrStepRow}>
-                <IconSymbol name="checkmark.circle.fill" size={15} color={Palette.primary} />
-                <Text style={[styles.ocrStepText, { color: colors.textPrimary }]}>
-                  Formatting phone, email, and address
-                </Text>
+                <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
+                <Text style={styles.ocrStepText}>Formatting phone, email, and address</Text>
               </View>
             </View>
 
@@ -359,56 +506,130 @@ export default function ScanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#11101C',
   },
   header: {
     height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: '#11101C',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#2C2C2E',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  headerTitleRow: {
-    flexDirection: 'row',
+  headerBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#252431',
   },
   headerTitle: {
-    ...Typography.heading4,
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 17,
+    fontWeight: '600',
     color: '#FFFFFF',
-    fontSize: 16,
+    letterSpacing: -0.2,
   },
-  manualEntryHeaderBtn: {
-    flexDirection: 'row',
+  headerUserBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: BorderRadius.md,
-    backgroundColor: '#2C2C2E',
-    gap: 6,
+    justifyContent: 'center',
+    backgroundColor: '#252431',
   },
-  manualEntryHeaderText: {
-    color: '#FFFFFF',
-    ...Typography.bodySmMedium,
-    fontSize: 13,
+  scannerBody: {
+    flex: 1,
   },
   cameraWrapper: {
     flex: 1,
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#000000',
   },
-  overlay: {
+  cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(17, 16, 28, 0.35)',
+    justifyContent: 'space-between',
+  },
+  topControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  topControlCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#252431',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  topControlActive: {
+    borderColor: '#FA520F',
+    backgroundColor: 'rgba(250, 82, 15, 0.15)',
+  },
+  autoDetectPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(37, 36, 49, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    gap: 6,
+  },
+  autoDetectText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.6,
+  },
+  statusPillWrapper: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 16, 28, 0.85)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    gap: 8,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FA520F',
+  },
+  statusPillText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#D0D0D5',
   },
   viewFinderContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
   },
   businessCardFrame: {
-    width: '100%',
+    width: '92%',
+    maxWidth: 360,
     aspectRatio: 1.586, // Standard 3.5" x 2" business card ratio
     position: 'relative',
     justifyContent: 'center',
@@ -416,86 +637,122 @@ const styles = StyleSheet.create({
   },
   cornerBracket: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderColor: Palette.primary,
+    width: 28,
+    height: 28,
+    borderColor: '#FA520F',
   },
   cornerTL: {
     top: 0,
     left: 0,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderTopLeftRadius: BorderRadius.sm,
+    borderTopWidth: 3.5,
+    borderLeftWidth: 3.5,
+    borderTopLeftRadius: 6,
   },
   cornerTR: {
     top: 0,
     right: 0,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderTopRightRadius: BorderRadius.sm,
+    borderTopWidth: 3.5,
+    borderRightWidth: 3.5,
+    borderTopRightRadius: 6,
   },
   cornerBL: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderBottomLeftRadius: BorderRadius.sm,
+    borderBottomWidth: 3.5,
+    borderLeftWidth: 3.5,
+    borderBottomLeftRadius: 6,
   },
   cornerBR: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderBottomRightRadius: BorderRadius.sm,
+    borderBottomWidth: 3.5,
+    borderRightWidth: 3.5,
+    borderBottomRightRadius: 6,
   },
-  guideBadge: {
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
+  instructionContainer: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.md,
+    alignItems: 'center',
+    gap: 4,
+  },
+  instructionTitle: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  instructionSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  instructionSubtitle: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 11,
+    color: '#D0D0D5',
+    textAlign: 'center',
+  },
+  bottomControlsBar: {
+    backgroundColor: '#11101C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  bottomActionButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 64,
+    gap: 6,
+  },
+  bottomActionCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#252431',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  guideText: {
-    ...Typography.caption,
-    color: '#FFFFFF',
+  bottomActionLabel: {
+    fontFamily: Typography.fontFamily.sans,
     fontSize: 12,
+    fontWeight: '500',
+    color: '#D0D0D5',
   },
-  instructionContainer: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-    alignItems: 'center',
-  },
-  instructionText: {
-    ...Typography.caption,
-    color: Palette.onDarkMuted,
-    textAlign: 'center',
-  },
-  controlsContainer: {
-    height: 90,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: Spacing.md,
-  },
-  captureOuterCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 3,
+  shutterOuterRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 3.5,
     borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
+    shadowColor: '#FA520F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  captureInnerCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: Palette.primary,
+  shutterInnerDisc: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FA520F',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewContainer: {
     flex: 1,
     padding: Spacing.xl,
     justifyContent: 'space-between',
+    backgroundColor: '#11101C',
   },
   previewImageContainer: {
     flex: 1,
@@ -503,6 +760,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#000000',
     marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   previewImage: {
     width: '100%',
@@ -518,7 +777,7 @@ const styles = StyleSheet.create({
   },
   previewSubtitle: {
     ...Typography.bodySm,
-    color: Palette.onDarkMuted,
+    color: '#D0D0D5',
   },
   previewControls: {
     flexDirection: 'row',
@@ -532,12 +791,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.xl,
+    backgroundColor: '#11101C',
   },
   ocrPanel: {
     width: '100%',
     maxWidth: 380,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#252431',
     padding: Spacing.xl,
     alignItems: 'center',
   },
@@ -546,12 +808,14 @@ const styles = StyleSheet.create({
   },
   ocrTitle: {
     ...Typography.heading1,
-    fontSize: 24,
+    fontSize: 22,
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 6,
   },
   ocrSubtitle: {
     ...Typography.bodySm,
+    color: '#D0D0D5',
     textAlign: 'center',
     marginBottom: Spacing.xl,
   },
@@ -567,6 +831,7 @@ const styles = StyleSheet.create({
   },
   ocrStepText: {
     ...Typography.bodySmMedium,
+    color: '#FFFFFF',
   },
   ocrStripeWrapper: {
     width: '100%',
@@ -596,8 +861,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: Spacing.xl,
     maxWidth: 300,
-  },
-  fallbackBtn: {
-    minWidth: 220,
   },
 });

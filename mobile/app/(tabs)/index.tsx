@@ -7,24 +7,20 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Palette, Typography, BorderRadius } from '@/constants/theme';
-import { AppHeader } from '@/components/ui/AppHeader';
-import { EditorialTitle } from '@/components/ui/EditorialTitle';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { Typography, BorderRadius } from '@/constants/theme';
 import { ContactRow } from '@/components/ui/ContactRow';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { SunsetStripe } from '@/components/ui/SunsetStripe';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { apiService, UserProfile } from '@/services/api.service';
+import { apiService } from '@/services/api.service';
 import { contactStore, ContactData } from '@/services/contact.store';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactData[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -49,7 +45,6 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setUserProfile(apiService.getUser());
       setLoading(true);
       loadDashboard().finally(() => setLoading(false));
     }, [])
@@ -65,19 +60,25 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <AppHeader
-        title="QuickBiz"
-        rightAction={
-          <View style={styles.headerAction}>
-            <IconSymbol
-              name="gearshape.fill"
-              size={18}
-              color={Palette.slate}
-            />
-          </View>
-        }
-        onRightAction={() => router.push('/(tabs)/settings')}
-      />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* 1. Top Header */}
+      <View style={styles.header}>
+        <View style={styles.brandRow}>
+          <Text style={styles.brandTitle}>QuickBiz</Text>
+          <View style={styles.brandOrangeDot} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => router.push('/(tabs)/settings')}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open settings"
+        >
+          <IconSymbol name="gearshape.fill" size={19} color="#4A4A4A" />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -86,55 +87,50 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={Palette.primary}
-            colors={[Palette.primary]}
+            tintColor="#FA520F"
+            colors={['#FA520F']}
           />
         }
       >
-        {/* Editorial Introduction & Hero Banner */}
+        {/* 2. Hero Section */}
         <View style={styles.heroSection}>
-          <EditorialTitle
-            title="Your business contacts,&#10;organized."
-            subtitle={
-              userProfile?.name
-                ? `Logged in as ${userProfile.name}. Scan and archive physical business cards with on-device precision.`
-                : 'Scan and digitize physical business cards with on-device optical character recognition.'
-            }
-            size="hero"
-          />
+          <Text style={styles.heroEyebrow}>INTELLIGENT OCR DIRECTORY</Text>
 
-          <View style={styles.actionRow}>
-            <PrimaryButton
-              title="Scan Business Card"
-              onPress={() => router.push('/(tabs)/scan')}
-              icon={<IconSymbol name="camera.fill" size={16} color="#FFFFFF" />}
-              style={styles.scanButton}
-            />
-          </View>
+          <Text style={styles.heroHeading}>
+            Your business{'\n'}contacts, organised.
+          </Text>
+
+          <Text style={styles.heroDescription}>
+            Scan and digitise physical business cards with privacy-preserving,
+            lightning-fast on-device optical character recognition.
+          </Text>
+
+          {/* Primary Action Button */}
+          <TouchableOpacity
+            style={styles.primaryScanButton}
+            onPress={() => router.push('/(tabs)/scan')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Scan business card"
+          >
+            <IconSymbol name="camera.fill" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryScanButtonText}>Scan Business Card</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Sunset Signature Stripe Accent */}
-        <SunsetStripe height={3} style={styles.sunsetStripe} />
+        {/* 3. Hero Sunset Divider */}
+        <SunsetStripe height={3} style={styles.sunsetDivider} />
 
-        {/* Directory Snapshot & Recents */}
+        {/* 4. Recent Contacts Section */}
         <View style={styles.recentsSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Contacts</Text>
-            {contacts.length > 0 && (
-              <TouchableOpacity
-                onPress={() => router.push('/(tabs)/contacts')}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.viewAllText}>
-                  View all ({contacts.length}) →
-                </Text>
-              </TouchableOpacity>
-            )}
+            <Text style={styles.totalCountText}>{contacts.length} Total</Text>
           </View>
 
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator color={Palette.primary} size="small" />
+              <ActivityIndicator color="#FA520F" size="small" />
               <Text style={styles.loadingText}>Loading directory...</Text>
             </View>
           ) : recentContacts.length > 0 ? (
@@ -152,14 +148,72 @@ export default function HomeScreen() {
                   showDivider={index < recentContacts.length - 1}
                 />
               ))}
+
+              {contacts.length > 5 && (
+                <TouchableOpacity
+                  style={styles.viewAllFooter}
+                  onPress={() => router.push('/(tabs)/contacts')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.viewAllFooterText}>
+                    View all {contacts.length} contacts →
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
-            <EmptyState
-              title="No Contacts Yet"
-              description="Capture your first card or enter details manually to start building your directory."
-              actionTitle="Scan Your First Card"
-              onAction={() => router.push('/(tabs)/scan')}
-            />
+            /* 5. Empty State Card */
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconCircle}>
+                <IconSymbol name="person.2.fill" size={24} color="#FA520F" />
+              </View>
+
+              <Text style={styles.emptyTitle}>No Contacts Yet</Text>
+
+              <Text style={styles.emptySubtitle}>
+                Capture your first physical card or enter details manually to start
+                building your directory.
+              </Text>
+
+              {/* Empty State Primary Action */}
+              <TouchableOpacity
+                style={styles.emptyPrimaryButton}
+                onPress={() => router.push('/(tabs)/scan')}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Scan your first card"
+              >
+                <IconSymbol name="plus" size={16} color="#FFFFFF" />
+                <Text style={styles.emptyPrimaryButtonText}>
+                  Scan Your First Card
+                </Text>
+              </TouchableOpacity>
+
+              {/* Empty State Secondary Action */}
+              <TouchableOpacity
+                style={styles.emptySecondaryButton}
+                onPress={() =>
+                  router.push({
+                    pathname: '/review',
+                    params: { category: 'Other' },
+                  })
+                }
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Enter contact manually"
+              >
+                <IconSymbol name="pencil" size={15} color="#1F1F1F" />
+                <Text style={styles.emptySecondaryButtonText}>Enter Manually</Text>
+              </TouchableOpacity>
+
+              {/* Trust / Privacy Badge */}
+              <View style={styles.trustBadge}>
+                <IconSymbol name="lock.fill" size={12} color="#8A8A8A" />
+                <Text style={styles.trustText}>
+                  100% On-device ML • Private & Offline-ready
+                </Text>
+              </View>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -170,63 +224,148 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#F8F7FF',
+  },
+  header: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5E5',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  brandTitle: {
+    fontFamily: Typography.fontFamily.serif,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F1F1F',
+    letterSpacing: -0.4,
+  },
+  brandOrangeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FA520F',
+    marginLeft: 2,
+    marginBottom: 4,
+  },
+  settingsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
   scrollContent: {
     paddingBottom: 40,
-  },
-  headerAction: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.surface,
+    backgroundColor: '#F8F7FF',
   },
   heroSection: {
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 24,
-    backgroundColor: Palette.canvas,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 22,
+    backgroundColor: '#F8F7FF',
   },
-  actionRow: {
-    marginTop: 8,
+  heroEyebrow: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: '#FA520F',
+    marginBottom: 8,
   },
-  scanButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 24,
+  heroHeading: {
+    fontFamily: Typography.fontFamily.serif,
+    fontSize: 32,
+    fontWeight: '400',
+    lineHeight: 38,
+    letterSpacing: -0.6,
+    color: '#1F1F1F',
+    marginBottom: 10,
   },
-  sunsetStripe: {
-    marginVertical: 4,
+  heroDescription: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: '#6A6A6A',
+    marginBottom: 20,
+  },
+  primaryScanButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#FA520F',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#FA520F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  primaryScanButtonText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  sunsetDivider: {
+    width: '100%',
   },
   recentsSection: {
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingTop: 22,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
     marginBottom: 12,
   },
   sectionTitle: {
     fontFamily: Typography.fontFamily.sans,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: Palette.ink,
+    color: '#1F1F1F',
     letterSpacing: -0.2,
   },
-  viewAllText: {
+  totalCountText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
     fontWeight: '500',
-    color: Palette.primary,
+    color: '#8A8A8A',
   },
   contactsCard: {
-    backgroundColor: Palette.canvas,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: Palette.hairlineSoft,
+    backgroundColor: '#FFFFFF',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    overflow: 'hidden',
+  },
+  viewAllFooter: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E5E5E5',
+    backgroundColor: '#FAFAFA',
+  },
+  viewAllFooterText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FA520F',
   },
   loadingContainer: {
     paddingVertical: 40,
@@ -236,7 +375,99 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: Typography.fontFamily.sans,
     fontSize: 13,
-    color: Palette.stone,
+    color: '#8A8A8A',
     marginTop: 10,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFF8E0',
+    borderWidth: 1,
+    borderColor: '#E6D5A8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1F1F1F',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#6A6A6A',
+    textAlign: 'center',
+    maxWidth: 270,
+    marginBottom: 20,
+  },
+  emptyPrimaryButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#FA520F',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#FA520F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emptyPrimaryButtonText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  emptySecondaryButton: {
+    width: '100%',
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  emptySecondaryButtonText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  trustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 18,
+  },
+  trustText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 11,
+    color: '#8A8A8A',
   },
 });

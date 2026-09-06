@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -15,10 +16,10 @@ export default function TabLayout() {
   // - Android with 3-button navigation provides insets.bottom ~ 48dp
   // - Android with gesture navigation provides insets.bottom ~ 16-24dp
   // - iOS with home indicator provides insets.bottom ~ 34dp
-  // - Devices without insets (web/older hardware) receive 8dp base padding
+  // - Fallback ensures tab labels are always completely above system navigation bar
   const bottomInset = insets.bottom;
-  const tabPaddingBottom = bottomInset > 0 ? bottomInset : 8;
-  const tabHeight = 56 + tabPaddingBottom;
+  const tabPaddingBottom = bottomInset > 0 ? bottomInset : (Platform.OS === 'android' ? 12 : 8);
+  const tabHeight = 60 + tabPaddingBottom;
 
   return (
     <Tabs
@@ -34,7 +35,7 @@ export default function TabLayout() {
           borderTopWidth: 1,
           height: tabHeight,
           paddingBottom: tabPaddingBottom,
-          paddingTop: 8,
+          paddingTop: 6,
           elevation: 8,
           shadowColor: '#000000',
           shadowOffset: { width: 0, height: -2 },
@@ -46,9 +47,12 @@ export default function TabLayout() {
           fontSize: 11,
           fontWeight: '500',
           marginTop: 2,
+          marginBottom: 2,
         },
         tabBarItemStyle: {
-          paddingVertical: 2,
+          paddingVertical: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
         },
       }}>
       <Tabs.Screen
