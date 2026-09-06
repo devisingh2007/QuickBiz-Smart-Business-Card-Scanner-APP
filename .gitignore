@@ -1,7 +1,9 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# Backend (Private / Local only)
-server/
+# Backend build and dependencies
+server/node_modules/
+server/dist/
+server/build/
 
 # Dependencies
 node_modules/
@@ -47,8 +49,10 @@ desktop.ini
 !*.env.example
 mobile/.env
 mobile/.env.*
+!mobile/.env.example
 server/.env
 server/.env.*
+!server/.env.example
 
 # TypeScript
 *.tsbuildinfo
