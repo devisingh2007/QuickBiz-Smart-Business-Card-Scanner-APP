@@ -14,6 +14,7 @@ import { Palette, Typography } from '@/constants/theme';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ContactRow } from '@/components/ui/ContactRow';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { apiService } from '@/services/api.service';
 import { contactStore, ContactData } from '@/services/contact.store';
 import { CATEGORIES } from '@/constants/categories';
@@ -87,10 +88,30 @@ export default function ContactsScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* Editorial Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Contacts</Text>
-        <Text style={styles.countBadge}>
-          {contacts.length} {contacts.length === 1 ? 'record' : 'records'}
-        </Text>
+        <View>
+          <Text style={styles.headerTitle}>Contacts</Text>
+          <Text style={styles.countBadge}>
+            {contacts.length} {contacts.length === 1 ? 'record' : 'records'}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.newContactBtn}
+          onPress={() =>
+            router.push({
+              pathname: '/review',
+              params: {
+                category: selectedCategory !== 'All' ? selectedCategory : 'Other',
+              },
+            })
+          }
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Add new contact"
+        >
+          <IconSymbol name="plus" size={14} color="#FFFFFF" />
+          <Text style={styles.newContactBtnText}>New Contact</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Search Bar with 8px radius */}
@@ -98,7 +119,7 @@ export default function ContactsScreen() {
         <SearchInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search by name, company, role..."
+          placeholder="Search name, company, email..."
         />
       </View>
 
@@ -143,17 +164,27 @@ export default function ContactsScreen() {
         </View>
       ) : contacts.length === 0 ? (
         <EmptyState
-          title={searchQuery ? 'No Matching Contacts' : 'Directory Empty'}
+          title={searchQuery ? 'No Matching Contacts' : 'No Contacts Yet'}
           description={
             searchQuery
               ? `No contacts found matching "${searchQuery}". Try searching with a different term or category.`
-              : 'Your contact library is empty. Scan a business card to automatically populate contact records.'
+              : 'Your contact library is empty. Scan a business card or enter details manually to start building your directory.'
           }
           actionTitle={searchQuery ? 'Clear Search' : 'Scan Business Card'}
           onAction={
             searchQuery
               ? () => setSearchQuery('')
               : () => router.push('/(tabs)/scan')
+          }
+          secondaryActionTitle={searchQuery ? undefined : 'Enter Manually'}
+          onSecondaryAction={
+            searchQuery
+              ? undefined
+              : () =>
+                  router.push({
+                    pathname: '/review',
+                    params: { category: 'Other' },
+                  })
           }
         />
       ) : (
@@ -186,7 +217,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -204,6 +235,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Palette.stone,
     fontWeight: '500',
+    marginTop: 2,
+  },
+  newContactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Palette.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 5,
+  },
+  newContactBtnText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   searchContainer: {
     paddingHorizontal: 20,

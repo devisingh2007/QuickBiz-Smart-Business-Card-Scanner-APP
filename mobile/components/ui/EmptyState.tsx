@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { Palette, BorderRadius, Typography } from '@/constants/theme';
 import { PrimaryButton } from './PrimaryButton';
 import { IconSymbol } from './icon-symbol';
@@ -10,6 +10,8 @@ interface EmptyStateProps {
   iconName?: any;
   actionTitle?: string;
   onAction?: () => void;
+  secondaryActionTitle?: string;
+  onSecondaryAction?: () => void;
   style?: ViewStyle;
 }
 
@@ -23,6 +25,8 @@ export function EmptyState({
   iconName = 'person.2.fill',
   actionTitle,
   onAction,
+  secondaryActionTitle,
+  onSecondaryAction,
   style,
 }: EmptyStateProps) {
   return (
@@ -38,6 +42,15 @@ export function EmptyState({
           onPress={onAction}
           style={styles.actionBtn}
         />
+      )}
+      {secondaryActionTitle && onSecondaryAction && (
+        <TouchableOpacity
+          onPress={onSecondaryAction}
+          activeOpacity={0.7}
+          style={styles.secondaryBtn}
+        >
+          <Text style={styles.secondaryBtnText}>{secondaryActionTitle}</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -75,5 +88,17 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     minWidth: 180,
+  },
+  secondaryBtn: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  secondaryBtnText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Palette.ink,
+    textDecorationLine: 'underline',
   },
 });
