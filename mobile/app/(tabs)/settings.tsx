@@ -18,7 +18,7 @@ import { Badge, BadgeVariant } from '@/components/ui/Badge';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { DangerButton } from '@/components/ui/DangerButton';
 import { SunsetStripe } from '@/components/ui/SunsetStripe';
-import { apiService, BASE_URL } from '@/services/api.service';
+import { apiService } from '@/services/api.service';
 import { contactStore } from '@/services/contact.store';
 
 export default function SettingsScreen() {
@@ -38,12 +38,9 @@ export default function SettingsScreen() {
     setSyncStatus('Syncing');
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const response = await fetch(`${BASE_URL}/`, { signal: controller.signal });
-      clearTimeout(timeoutId);
+      const isOnline = await apiService.ping();
 
-      if (response.ok) {
+      if (isOnline) {
         await contactStore.syncPendingContacts();
         const contacts = contactStore.getContacts();
         const hasUnsynced = contacts.some(

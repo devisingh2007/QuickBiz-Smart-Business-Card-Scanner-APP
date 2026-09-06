@@ -2,10 +2,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const isProduction = process.env.NODE_ENV === 'production';
-export const BASE_URL = isProduction
-  ? (process.env.EXPO_PUBLIC_API_URL || '')
-  : (process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:5000/api');
+const getBaseUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const defaultUrl = 'https://quickbiz-smart-business-card-scanner-app.onrender.com/api';
+  const target = envUrl || defaultUrl;
+
+  // Normalize: remove trailing slashes and ensure /api suffix
+  let normalized = target.replace(/\/+$/, '');
+  if (!normalized.endsWith('/api')) {
+    normalized = `${normalized}/api`;
+  }
+  return normalized;
+};
+
+export const BASE_URL = getBaseUrl();
 
 export interface UserProfile {
   id: string;
@@ -103,7 +113,20 @@ class ApiService {
     return headers;
   }
 
-  private async request(url: string, options: RequestInit, timeoutMs = 10000): Promise<any> {
+  public async ping(): Promise<boolean> {
+    try {
+      const rootUrl = BASE_URL.replace(/\/api$/, '');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch(`${rootUrl}/`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  private async request(url: string, options: RequestInit, timeoutMs = 30000): Promise<any> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -112,8 +135,8 @@ class ApiService {
       try {
         response = await fetch(url, { ...options, signal: controller.signal });
       } catch (err) {
-        // Fallback for iOS simulator if 10.0.2.2 Android loopback fails
-        if (!isProduction && url.includes('10.0.2.2')) {
+        // Fallback for iOS simulator if 10.0.2.2 Android loopback fails during local dev testing
+        if (url.includes('10.0.2.2')) {
           const fallbackUrl = url.replace('10.0.2.2', 'localhost');
           response = await fetch(fallbackUrl, { ...options, signal: controller.signal });
         } else {
@@ -148,7 +171,7 @@ class ApiService {
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        throw new Error('Request timed out. Please check your network and try again.');
+        throw new Error('Request timed out. The server may be waking up (Render cold start) or your connection is slow. Please try again.');
       }
       throw err;
     }
