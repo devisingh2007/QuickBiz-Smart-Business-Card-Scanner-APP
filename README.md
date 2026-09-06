@@ -104,75 +104,6 @@ flowchart TD
     R -->|On Reconnect| P
 ```
 
----
-
-## 🔎 OCR Processing Flow
-
-QuickBiz performs text recognition on-device to ensure user privacy and instant responsiveness.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant Cam as Camera Viewfinder (expo-camera)
-    participant OCR as Google ML Kit (expo-mlkit-ocr)
-    participant Parser as Contact Parser Service
-    participant Review as Review & Edit UI
-
-    User->>Cam: Align business card within frame & tap capture
-    Cam->>Cam: Freeze frame & capture high-res photo URI
-    Cam->>OCR: Pass imageUri to recognizeText(imageUri)
-    Note over OCR: On-device ML Kit neural network processes image
-    OCR-->>Parser: Returns raw text lines & bounding blocks
-    Parser->>Parser: Normalize whitespace & sanitize typos (@, .com)
-    Parser->>Parser: Match phone numbers, emails, websites via regex
-    Parser->>Parser: Identify designation & company via keyword trees
-    Parser->>Parser: Extract candidate person name & address lines
-    Parser->>Parser: Compute Extraction Quality Score (0-100%)
-    Parser-->>Review: Populate structured fields in Review form
-    Review-->>User: Display pre-filled editable form with Quality Badge
-```
-
----
-
-## 🧠 Contact Parsing Engine
-
-The parser transforms unstructured text lines into a strongly-typed contact object without sending data to third-party cloud AI APIs.
-
-### 1. Extraction Pipeline Rules
-- **Email Extraction**: Uses pattern `/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/` to capture all email occurrences and normalizes them to lowercase.
-- **Website Extraction**: Detects URLs, excludes common email domain providers (e.g. `@gmail.com`, `@yahoo.com`), and normalizes prefixes (`http://`, `www.`).
-- **Phone Number Parsing**: Matches international and local number patterns (`+?\d[\d-\s\(\)\.]{5,}\d`), strips punctuation noise, and auto-labels lines containing keywords like `Cell`, `Office`, `Fax`, or `Mobile`.
-- **Address Identification**: Scans for postal keywords (`Street`, `Road`, `Suite`, `Phase`, `Sector`, `Tower`, `Floor`, `Nagar`, `PIN`, `ZIP`) and merges contiguous address fragments.
-- **Designation Detection**: Compares lines against a dictionary of 35+ executive and engineering titles (`CEO`, `Staff Engineer`, `Director`, `Founder`, `Consultant`, etc.).
-- **Name Candidate Filtering**: Eliminates lines containing digits, company keywords, and URLs. Selects 2-to-4 word clean alphabetic strings located prominently on the card.
-- **Company Name Association**: Scans remaining lines against legal company suffixes (`Ltd`, `Inc`, `Corp`, `LLC`, `Pvt`, `Technologies`, `Labs`, `Solutions`).
-
-### 2. Quality Scoring Formula
-$$\text{Score} = \left( \frac{\text{Name}(10) + \text{Phones}(10) + \text{Emails}(10) + \text{Company}(5) + \text{Designation}(5) + \text{Address}(5) + \text{Website}(5)}{50} \right) \times 100$$
-
----
-
-## 💾 Contact Saving & Duplicate Resolution
-
-```mermaid
-flowchart TD
-    A[User taps 'Save Contact'] --> B[Generate Local UUID & Timestamp]
-    B --> C[Store in AsyncStorage with syncStatus: 'pending']
-    C --> D{Has User Token?}
-    D -- No (Guest) --> E[Keep in Local Storage]
-    D -- Yes --> F[POST /api/contacts]
-    F --> G{Server Response}
-    G -- 201 Created --> H[Mark syncStatus: 'synced' with MongoDB _id]
-    G -- 409 Conflict (Duplicate) --> I[Display Duplicate Warning Modal]
-    I --> J{User Choice}
-    J -- 'Overwrite / Force Save' --> K[POST /api/contacts with forceSave: true]
-    K --> H
-    J -- 'Cancel' --> L[Remove pending local entry]
-    G -- Network Error --> M[Mark syncStatus: 'failed' & Queue for Auto-Sync]
-```
-
----
 
 ## 🏗️ Backend Architecture
 
@@ -216,64 +147,6 @@ graph LR
 - **Request Rate Limiting**: Protects authentication endpoints (20 req/15 min) and contact operations (100 req/15 min) against abuse.
 - **Strict Data Isolation**: Enforces query-level tenant isolation `{ userId: req.userId }` so users can never read, modify, or delete another user's data.
 - **Automatic Cascading Deletions**: Deleting an account (`DELETE /api/auth/account`) automatically wipes all associated contacts from MongoDB.
-
----
-
-## 🗄️ Database Design
-
-### 1. `User` Model
-| Field | Type | Attributes | Description |
-|---|---|---|---|
-| `_id` | `ObjectId` | Primary Key | Unique user identifier |
-| `name` | `String` | Required, Trimmed | User's full name (2–50 chars) |
-| `email` | `String` | Required, Unique, Lowercase | Normalized login email |
-| `password` | `String` | Required | Hashed password (`bcryptjs`, 10 salt rounds) |
-| `createdAt` | `Date` | Timestamp | Account creation timestamp |
-| `updatedAt` | `Date` | Timestamp | Last account update timestamp |
-
-### 2. `Contact` Model
-| Field | Type | Attributes | Description |
-|---|---|---|---|
-| `_id` | `ObjectId` | Primary Key | Unique contact identifier |
-| `userId` | `ObjectId` | Indexed, Ref: `User` | Owner reference for data isolation |
-| `name` | `String` | Required, Trimmed | Contact full name |
-| `phones` | `Array<{ value, type, label }>` | Sub-document Array | Formatted phone numbers (mobile, office, fax) |
-| `emails` | `Array<{ value, type }>` | Sub-document Array | Validated email addresses |
-| `company` | `String` | Optional, Trimmed | Organization / Company name |
-| `designation` | `String` | Optional, Trimmed | Job title / Role |
-| `officeAddress` | `String` | Optional, Trimmed | Physical mailing address |
-| `websites` | `Array<{ value, type }>` | Sub-document Array | Websites and URLs |
-| `category` | `String` | Enum (8 categories) | Client, Recruiter, Investor, Developer, etc. |
-| `nativeContactId` | `String` | Optional | Identifier in native phone address book |
-| `syncStatus` | `String` | Enum (`synced`, `pending`) | Cloud synchronization status |
-| `extractionQualityScore` | `Number` | Range: `0–100` | OCR extraction confidence rating |
-| `createdAt` | `Date` | Indexed | Record creation timestamp |
-| `updatedAt` | `Date` | Timestamp | Last modification timestamp |
-
----
-
-## 🔐 Authentication Flow
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant App as Mobile App (SecureStore)
-    participant Auth as Express Auth Controller
-    participant DB as MongoDB Atlas
-
-    User->>App: Enter Name, Email & Password (min 8 chars, 1 num)
-    App->>Auth: POST /api/auth/register
-    Auth->>Auth: Validate email format & password complexity
-    Auth->>DB: Check if email exists
-    DB-->>Auth: Email available
-    Auth->>Auth: Hash password with bcrypt (10 rounds)
-    Auth->>DB: Create User document
-    Auth->>Auth: Sign JWT token (expires in 30d)
-    Auth-->>App: Return { token, user: { id, name, email } }
-    App->>App: Store token securely in SecureStore / AsyncStorage
-    Note over App: Future requests attach header Authorization: Bearer <token>
-```
 
 ---
 
@@ -411,24 +284,7 @@ npm --prefix mobile run start
 
 ---
 
-## 🌐 REST API Overview
 
-All API endpoints follow standard RESTful conventions and return structured JSON responses:
-
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|:---:|
-| `GET` | `/` | Basic server health and status check | No |
-| `GET` | `/health` | Cloud platform liveness and readiness probe | No |
-| `POST` | `/api/auth/register` | Create a new user account with hashed password | No |
-| `POST` | `/api/auth/login` | Authenticate user and receive 30-day JWT token | No |
-| `DELETE`| `/api/auth/account` | Delete user account and cascade-delete all contacts | **Yes** |
-| `GET` | `/api/contacts` | Retrieve contacts (supports `?category=`, `?q=`, `?page=`) | **Yes** |
-| `POST` | `/api/contacts` | Create a contact (supports `forceSave: true` override) | **Yes** |
-| `GET` | `/api/contacts/:id` | Get full details of a specific contact | **Yes** |
-| `PATCH`| `/api/contacts/:id` | Update contact information | **Yes** |
-| `DELETE`| `/api/contacts/:id` | Delete a single contact | **Yes** |
-
----
 
 ## 🛡️ Security & Privacy
 
@@ -458,27 +314,6 @@ Warm Cream Canvas (#FFF8E0) ── Sunset Orange (#FA520F) ── Ink (#1F1F1F) 
   - **Headings & Display**: Editorial Serif (`Georgia` on iOS, `serif` on Android) for distinctive titles.
   - **Body & Controls**: Clean Geometric Sans-Serif (`System` / `sans-serif`) for crisp UI clarity.
 - **Components**: Pre-built pill badges, avatar initials with pastel tint backgrounds, tactile buttons, and search inputs.
-
----
-
-## 🧪 Testing
-
-QuickBiz includes automated scenario tests covering real-world business card variations:
-
-```bash
-# Run the Contact Parser Scenario Test Suite
-npx --prefix server ts-node -O "{\"module\":\"CommonJS\"}" mobile/utils/test-parser-scenarios.ts
-```
-
-### Verified Test Scenarios
-- [x] **Clear Standard Card**: Full extraction of name, title, company, phone, email, website, and address.
-- [x] **High-Density Small Text**: Accurate separation of compact multi-line text.
-- [x] **Multiple Phones & Labels**: Proper identification of `Cell`, `Office`, `Fax`, and `Mobile` tags.
-- [x] **Multiple Emails & Web Domains**: Disambiguation of website URLs from email domain strings.
-- [x] **International & Multi-Line Addresses**: Captures street, city, state, PIN/ZIP codes.
-- [x] **Logo-Heavy Noisy Cards**: Filters out decorative text and tagline noise.
-- [x] **Portrait / Non-Standard Layouts**: Robust name and title fallback resolution.
-- [x] **Low-Light / Spacing Typo Recovery**: Fixes broken OCR email strings (e.g. `user @ domain.com`).
 
 ---
 
