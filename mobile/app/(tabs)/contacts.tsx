@@ -1,19 +1,25 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, SafeAreaView, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  FlatList,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { ContactCard, ContactData } from '@/components/ui/ContactCard';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Palette, Typography } from '@/constants/theme';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { ContactRow } from '@/components/ui/ContactRow';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { apiService } from '@/services/api.service';
-import { contactStore } from '@/services/contact.store';
+import { contactStore, ContactData } from '@/services/contact.store';
 import { CATEGORIES } from '@/constants/categories';
 
 export default function ContactsScreen() {
   const router = useRouter();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -28,7 +34,6 @@ export default function ContactsScreen() {
     try {
       await contactStore.initialize();
 
-      // Trigger automatic background synchronization if online and logged in
       if (apiService.isAuthenticated()) {
         try {
           await contactStore.syncPendingContacts();
@@ -37,7 +42,6 @@ export default function ContactsScreen() {
         }
       }
 
-      // Fetch from persistent local/sync database cache
       const storedContacts = contactStore.getContacts();
       setAllContacts(storedContacts);
     } catch (err: any) {
@@ -47,7 +51,6 @@ export default function ContactsScreen() {
     }
   }, []);
 
-  // Debounce search query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -55,18 +58,20 @@ export default function ContactsScreen() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Perform in-memory filtering of contacts
   useEffect(() => {
     const query = debouncedSearchQuery.toLowerCase().trim();
-    const filtered = allContacts.filter(contact => {
-      const matchesSearch = !query || 
+    const filtered = allContacts.filter((contact) => {
+      const matchesSearch =
+        !query ||
         contact.name.toLowerCase().includes(query) ||
         (contact.company && contact.company.toLowerCase().includes(query)) ||
-        (contact.designation && contact.designation.toLowerCase().includes(query)) ||
-        (contact.emails || []).some(e => e.value.toLowerCase().includes(query)) ||
-        (contact.phones || []).some(p => p.value.toLowerCase().includes(query));
+        (contact.designation &&
+          contact.designation.toLowerCase().includes(query)) ||
+        (contact.emails || []).some((e) => e.value.toLowerCase().includes(query)) ||
+        (contact.phones || []).some((p) => p.value.toLowerCase().includes(query));
 
-      const matchesCategory = selectedCategory === 'All' || contact.category === selectedCategory;
+      const matchesCategory =
+        selectedCategory === 'All' || contact.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
     setContacts(filtered);
@@ -79,50 +84,47 @@ export default function ContactsScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* Editorial Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Contacts</Text>
+        <Text style={styles.headerTitle}>Contacts</Text>
+        <Text style={styles.countBadge}>
+          {contacts.length} {contacts.length === 1 ? 'record' : 'records'}
+        </Text>
       </View>
 
-      {/* Search Bar */}
+      {/* Search Bar with 8px radius */}
       <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <IconSymbol name="magnifyingglass" size={20} color={colors.textMuted} style={styles.searchIcon} />
-          <TextInput
-            placeholder="Search contacts..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={[styles.searchInput, { color: colors.text }]}
-          />
-          {searchQuery !== '' && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <IconSymbol name="chevron.left" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <SearchInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by name, company, role..."
+        />
       </View>
 
-      {/* Categories Horizontal Scroll */}
-      <View style={styles.categoriesContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
+      {/* Mistral Category Filter Pills */}
+      <View style={styles.categoryContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryScroll}
+        >
           {categories.map((category) => {
             const isSelected = selectedCategory === category;
             return (
               <TouchableOpacity
                 key={category}
                 onPress={() => setSelectedCategory(category)}
+                activeOpacity={0.8}
                 style={[
-                  styles.categoryTab,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                  isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  styles.categoryPill,
+                  isSelected ? styles.categoryPillActive : styles.categoryPillInactive,
                 ]}
               >
                 <Text
                   style={[
                     styles.categoryText,
-                    { color: colors.textSecondary },
-                    isSelected && { color: '#FFFFFF', fontWeight: '600' },
+                    isSelected ? styles.categoryTextActive : styles.categoryTextInactive,
                   ]}
                 >
                   {category}
@@ -133,42 +135,44 @@ export default function ContactsScreen() {
         </ScrollView>
       </View>
 
-      {/* Contacts List */}
-      {loading && contacts.length === 0 ? (
+      {/* Contact List */}
+      {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator color={Palette.primary} size="small" />
+          <Text style={styles.loadingText}>Refreshing directory...</Text>
         </View>
+      ) : contacts.length === 0 ? (
+        <EmptyState
+          title={searchQuery ? 'No Matching Contacts' : 'Directory Empty'}
+          description={
+            searchQuery
+              ? `No contacts found matching "${searchQuery}". Try searching with a different term or category.`
+              : 'Your contact library is empty. Scan a business card to automatically populate contact records.'
+          }
+          actionTitle={searchQuery ? 'Clear Search' : 'Scan Business Card'}
+          onAction={
+            searchQuery
+              ? () => setSearchQuery('')
+              : () => router.push('/(tabs)/scan')
+          }
+        />
       ) : (
         <FlatList
           data={contacts}
-          keyExtractor={(item) => item.id || item.name}
-          renderItem={({ item }) => (
-            <ContactCard
+          keyExtractor={(item, index) => item.id || index.toString()}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item, index }) => (
+            <ContactRow
               contact={item}
-              onPress={() => router.push({
-                pathname: '/contact-details',
-                params: {
-                  id: item.id || '',
-                  name: item.name || '',
-                  company: item.company || '',
-                  designation: item.designation || '',
-                  officeAddress: item.officeAddress || '',
-                  category: item.category || 'Other',
-                  nativeContactId: item.nativeContactId || '',
-                  phonesJson: JSON.stringify(item.phones || []),
-                  emailsJson: JSON.stringify(item.emails || []),
-                  websitesJson: JSON.stringify(item.websites || []),
-                  extractionQualityScore: item.extractionQualityScore ? String(item.extractionQualityScore) : ''
-                }
-              })}
+              onPress={() =>
+                router.push({
+                  pathname: '/contact-details',
+                  params: { id: item.id },
+                })
+              }
+              showDivider={index < contacts.length - 1}
             />
           )}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No contacts found</Text>
-            </View>
-          }
         />
       )}
     </SafeAreaView>
@@ -176,69 +180,84 @@ export default function ContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+    backgroundColor: Palette.canvas,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 12,
   },
-  title: {
+  headerTitle: {
+    fontFamily: Typography.fontFamily.serif,
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '400',
+    color: Palette.ink,
+    letterSpacing: -0.6,
+  },
+  countBadge: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 12,
+    color: Palette.stone,
+    fontWeight: '500',
   },
   searchContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    marginBottom: 12,
   },
-  searchBar: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
+  categoryContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: Palette.hairlineSoft,
+    paddingBottom: 10,
+    marginBottom: 4,
   },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    height: '100%',
-  },
-  categoriesContainer: {
-    marginBottom: 16,
-  },
-  categoriesScroll: {
-    paddingHorizontal: 24,
+  categoryScroll: {
+    paddingHorizontal: 20,
     gap: 8,
   },
-  categoryTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  categoryPill: {
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 9999, // Pill geometry permitted for category filter tags
     borderWidth: 1,
-  },
-  categoryText: {
-    fontSize: 14,
-  },
-  listContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 60,
   },
-  emptyText: {
-    fontSize: 16,
+  categoryPillActive: {
+    backgroundColor: Palette.ink,
+    borderColor: Palette.ink,
+  },
+  categoryPillInactive: {
+    backgroundColor: Palette.canvas,
+    borderColor: Palette.hairline,
+  },
+  categoryText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  categoryTextActive: {
+    color: '#FFFFFF',
+  },
+  categoryTextInactive: {
+    color: Palette.slate,
+  },
+  listContent: {
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 13,
+    color: Palette.stone,
+    marginTop: 10,
   },
 });

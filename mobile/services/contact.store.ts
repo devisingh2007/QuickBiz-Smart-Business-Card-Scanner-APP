@@ -1,57 +1,85 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ContactData } from '@/components/ui/ContactCard';
-import { apiService } from './api.service';
-import { normalizeEmail, normalizePhone } from '../utils/normalize';
 import * as Contacts from 'expo-contacts';
 import { Platform } from 'react-native';
+import { apiService } from './api.service';
+import { normalizeEmail, normalizePhone } from '../utils/normalize';
 
-const STORAGE_KEY = '@quickbiz_contacts';
+export interface ContactData {
+  id?: string;
+  name: string;
+  phone?: string;
+  phones?: { value: string; type?: string; label?: string }[];
+  email?: string;
+  emails?: { value: string; type?: string }[];
+  company: string;
+  designation: string;
+  officeAddress?: string;
+  website?: string;
+  websites?: { value: string; type?: string }[];
+  category?: 'Client' | 'Recruiter' | 'Investor' | 'Developer' | 'Business Partner' | 'Customer' | 'Friend' | 'Other';
+  syncStatus?: 'pending' | 'syncing' | 'synced' | 'failed';
+  syncOperation?: 'create' | 'update' | 'delete';
+  localUpdatedAt?: string;
+  serverUpdatedAt?: string;
+  nativeContactId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  extractionQualityScore?: number;
+}
 
 class ContactStore {
   private contacts: ContactData[] = [];
   private initialized = false;
-  private lastSyncAttemptTime = 0;
+  private currentUserId: string | null = null;
+  private lastSyncTime = 0;
 
-  // Initialize store and load contacts from AsyncStorage
-  public async initialize() {
-    if (this.initialized) return;
+  constructor() {
+    apiService.registerOnLogout(async () => {
+      await this.clearAll();
+    });
+  }
+
+  public async initialize(force = false) {
+    const user = apiService.getUser();
+    const userId = user?.id || 'guest';
+
+    if (this.initialized && this.currentUserId === userId && !force) return;
+
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        this.contacts = JSON.parse(stored);
-      } else {
-        this.contacts = [];
-      }
+      this.currentUserId = userId;
+      const key = `@quickbiz_contacts_${userId}`;
+      const stored = await AsyncStorage.getItem(key);
+      this.contacts = stored ? JSON.parse(stored) : [];
       this.initialized = true;
-      
-      // Auto-trigger sync check on start
+
+      // Automatically attempt to sync any pending offline items
       this.syncPendingContacts();
-    } catch (err) {
-      console.warn('Failed to load contacts from storage:', err);
+    } catch {
       this.contacts = [];
       this.initialized = true;
     }
   }
 
-  // Get current contact list (cached in-memory)
   public getContacts(): ContactData[] {
     return this.contacts;
   }
 
-  // Save the in-memory contacts array to AsyncStorage
   private async persistLocal() {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(this.contacts));
+      const userId = this.currentUserId || 'guest';
+      const key = `@quickbiz_contacts_${userId}`;
+      await AsyncStorage.setItem(key, JSON.stringify(this.contacts));
     } catch (err) {
-      console.warn('Failed to persist contacts locally:', err);
+      console.warn('Failed to save contacts locally:', err);
     }
   }
 
-  // Save/Create a new contact
-  public async saveContact(contact: ContactData, forceSync = false): Promise<{ success: boolean; duplicate?: boolean; message?: string }> {
+  public async saveContact(
+    contact: ContactData,
+    forceSync = false
+  ): Promise<{ success: boolean; duplicate?: boolean; message?: string }> {
     await this.initialize();
 
-    // Create a local ID if not present
     const id = contact.id || `local_${Date.now()}`;
     const timestamp = new Date().toISOString();
     const newContact: ContactData = {
@@ -62,16 +90,13 @@ class ContactStore {
       localUpdatedAt: timestamp,
     };
 
-    // Add to local array
     this.contacts = [newContact, ...this.contacts];
     await this.persistLocal();
 
-    // Attempt to sync to MongoDB
     if (apiService.isAuthenticated()) {
       try {
         const response = await apiService.createContact(contact, forceSync);
         if (response.duplicate) {
-          // Remove from local array if it's a duplicate and not forced
           if (!forceSync) {
             this.contacts = this.contacts.filter((c) => c.id !== id);
             await this.persistLocal();
@@ -79,12 +104,10 @@ class ContactStore {
           return { success: false, duplicate: true, message: response.message };
         }
 
-        // Successfully synced
         if (response.success && response.contact) {
           await this.updateLocalSyncStatus(id, 'synced', response.contact._id, response.contact.updatedAt);
         }
-      } catch (err) {
-        console.warn('API sync failed during save, marked as pending:', err);
+      } catch {
         await this.updateLocalSyncStatus(id, 'failed');
       }
     }
@@ -92,7 +115,6 @@ class ContactStore {
     return { success: true };
   }
 
-  // Update an existing contact
   public async updateContact(id: string, updatedData: Partial<ContactData>) {
     await this.initialize();
 
@@ -112,20 +134,17 @@ class ContactStore {
     });
     await this.persistLocal();
 
-    // Sync update to MongoDB if possible
     const contact = this.contacts.find((c) => c.id === id);
     if (contact && apiService.isAuthenticated() && !id.startsWith('local_')) {
       try {
         const response = await apiService.updateContact(id, updatedData);
         await this.updateLocalSyncStatus(id, 'synced', undefined, response.updatedAt);
-      } catch (err) {
-        console.warn('API update sync failed, marked as pending:', err);
+      } catch {
         await this.updateLocalSyncStatus(id, 'failed');
       }
     }
   }
 
-  // Delete a contact
   public async deleteContact(id: string) {
     await this.initialize();
 
@@ -135,50 +154,48 @@ class ContactStore {
     this.contacts = this.contacts.filter((c) => c.id !== id);
     await this.persistLocal();
 
-    // Try to delete linked native contact
+    // Remove linked contact from phone's native address book if present
     if (nativeId && Platform.OS !== 'web') {
       try {
         const { status } = await Contacts.requestPermissionsAsync();
         if (status === 'granted') {
           await Contacts.removeContactAsync(nativeId);
-          console.log('[CONTACT LIFE] Removed linked native contact:', nativeId);
         }
-      } catch (err: any) {
-        console.warn('[CONTACT LIFE] Failed to delete linked native contact:', err.message || err);
+      } catch (err) {
+        console.warn('Could not remove native phone contact:', err);
       }
     }
 
-    // Sync delete to MongoDB
     if (!id.startsWith('local_')) {
-      // Add to pending deletions in AsyncStorage
+      const userId = this.currentUserId || 'guest';
+      const deletionsKey = `@quickbiz_pending_deletions_${userId}`;
+
       try {
-        const storedDeletions = await AsyncStorage.getItem('@quickbiz_pending_deletions');
+        const storedDeletions = await AsyncStorage.getItem(deletionsKey);
         const deletions = storedDeletions ? JSON.parse(storedDeletions) : [];
         if (!deletions.includes(id)) {
           deletions.push(id);
-          await AsyncStorage.setItem('@quickbiz_pending_deletions', JSON.stringify(deletions));
+          await AsyncStorage.setItem(deletionsKey, JSON.stringify(deletions));
         }
-      } catch (e) {
-        console.warn('Failed to store pending deletion:', e);
+      } catch {
+        // Ignore storage error
       }
 
       if (apiService.isAuthenticated()) {
         try {
           await apiService.deleteContact(id);
-          // Remove from pending deletions
-          const storedDeletions = await AsyncStorage.getItem('@quickbiz_pending_deletions');
+          const storedDeletions = await AsyncStorage.getItem(deletionsKey);
           if (storedDeletions) {
             const deletions = JSON.parse(storedDeletions).filter((dId: string) => dId !== id);
-            await AsyncStorage.setItem('@quickbiz_pending_deletions', JSON.stringify(deletions));
+            await AsyncStorage.setItem(deletionsKey, JSON.stringify(deletions));
           }
         } catch (err) {
-          console.warn('API delete sync failed:', err);
+          console.warn('Failed to sync contact deletion to server:', err);
         }
       }
     }
   }
 
-  // Helper to update sync state of a local contact
   private async updateLocalSyncStatus(
     localId: string,
     status: 'synced' | 'pending' | 'failed',
@@ -189,7 +206,7 @@ class ContactStore {
       if (c.id === localId) {
         return {
           ...c,
-          id: newId || c.id, // Update local ID to MongoDB ObjectId if returned
+          id: newId || c.id,
           syncStatus: status,
           syncOperation: status === 'synced' ? undefined : c.syncOperation,
           localUpdatedAt: newUpdatedAt || c.localUpdatedAt,
@@ -201,46 +218,43 @@ class ContactStore {
     await this.persistLocal();
   }
 
-  // Automatically attempt to sync any unsynced contacts (pending/failed)
   public async syncPendingContacts(force = false) {
     if (!apiService.isAuthenticated()) return;
 
     const now = Date.now();
-    if (!force && (now - this.lastSyncAttemptTime < 30000)) {
-      console.log('[CONTACT LIFE] Skipping sync pending: rate limited (< 30s since last run)');
+    if (!force && now - this.lastSyncTime < 30000) {
       return;
     }
-    this.lastSyncAttemptTime = now;
+    this.lastSyncTime = now;
 
-    // 1. Process pending deletions first
+    const userId = this.currentUserId || 'guest';
+    const deletionsKey = `@quickbiz_pending_deletions_${userId}`;
+
+    // 1. Process queued deletions
     try {
-      const storedDeletions = await AsyncStorage.getItem('@quickbiz_pending_deletions');
+      const storedDeletions = await AsyncStorage.getItem(deletionsKey);
       if (storedDeletions) {
         const deletions = JSON.parse(storedDeletions);
-        if (deletions.length > 0) {
-          console.log(`Processing ${deletions.length} pending contact deletions...`);
-          const remainingDeletions = [...deletions];
-          for (const id of deletions) {
-            try {
-              await apiService.deleteContact(id);
-              const index = remainingDeletions.indexOf(id);
-              if (index > -1) remainingDeletions.splice(index, 1);
-            } catch (err) {
-              console.warn(`Failed to sync deletion of contact ${id}:`, err);
-            }
+        const remaining = [...deletions];
+        for (const id of deletions) {
+          try {
+            await apiService.deleteContact(id);
+            const idx = remaining.indexOf(id);
+            if (idx > -1) remaining.splice(idx, 1);
+          } catch {
+            // Keep in queue for next sync
           }
-          await AsyncStorage.setItem('@quickbiz_pending_deletions', JSON.stringify(remainingDeletions));
         }
+        await AsyncStorage.setItem(deletionsKey, JSON.stringify(remaining));
       }
-    } catch (e) {
-      console.warn('Error processing pending deletions:', e);
+    } catch {
+      // Ignore
     }
 
     // 2. Process pending creates and updates
     const unsynced = this.contacts.filter((c) => c.syncStatus === 'pending' || c.syncStatus === 'failed');
     if (unsynced.length === 0) return;
 
-    console.log(`Syncing ${unsynced.length} pending contacts to MongoDB...`);
     for (const contact of unsynced) {
       try {
         const cleanContact = { ...contact };
@@ -259,25 +273,20 @@ class ContactStore {
           const response = await apiService.updateContact(contact.id!, cleanContact);
           await this.updateLocalSyncStatus(contact.id!, 'synced', undefined, response.updatedAt);
         }
-      } catch (err) {
-        console.warn(`Failed to sync contact ${contact.name}:`, err);
+      } catch {
         await this.updateLocalSyncStatus(contact.id!, 'failed');
       }
     }
   }
 
-  // Sync state after successful login/registration
   public async handleLoginSync() {
-    await this.initialize();
-    
+    await this.initialize(true);
+
     try {
-      // 1. Fetch remote contacts from backend
-      const remoteContacts = await apiService.getContacts();
-      
-      // 2. Merge remote contacts with local contacts (avoiding duplicates and resolving conflicts)
+      const remoteContacts = await apiService.getContacts(undefined, undefined, 1, 1000);
       const localContacts = [...this.contacts];
       const merged: ContactData[] = [];
-      const mergedRemoteIds = new Set<string>();
+      const remoteIdsHandled = new Set<string>();
 
       for (const local of localContacts) {
         if (local.id?.startsWith('local_')) {
@@ -285,117 +294,88 @@ class ContactStore {
           continue;
         }
 
-        // Find matching remote contact by ID
         const remote = remoteContacts.find((rc: any) => rc._id === local.id);
 
         if (remote) {
-          mergedRemoteIds.add(remote._id);
-
-          // Conflict resolution: Check who has the latest edit
+          remoteIdsHandled.add(remote._id);
           const localTime = local.localUpdatedAt ? new Date(local.localUpdatedAt).getTime() : 0;
           const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
 
           if (local.syncStatus === 'pending' || local.syncStatus === 'failed') {
             if (localTime > remoteTime) {
-              // Local is newer, keep local version
               merged.push(local);
             } else {
-              // Server is newer, overwrite local with server version
-              merged.push({
-                id: remote._id,
-                name: remote.name,
-                phones: remote.phones || [],
-                emails: remote.emails || [],
-                websites: remote.websites || [],
-                company: remote.company,
-                designation: remote.designation,
-                officeAddress: remote.officeAddress,
-                category: remote.category,
-                nativeContactId: remote.nativeContactId,
-                syncStatus: 'synced',
-                localUpdatedAt: remote.updatedAt,
-                serverUpdatedAt: remote.updatedAt,
-                extractionQualityScore: remote.extractionQualityScore,
-              });
+              merged.push(this.formatRemoteContact(remote));
             }
           } else {
-            // Local is clean, overwrite with server version to get latest remote changes
-            merged.push({
-              id: remote._id,
-              name: remote.name,
-              phones: remote.phones || [],
-              emails: remote.emails || [],
-              websites: remote.websites || [],
-              company: remote.company,
-              designation: remote.designation,
-              officeAddress: remote.officeAddress,
-              category: remote.category,
-              nativeContactId: remote.nativeContactId,
-              syncStatus: 'synced',
-              localUpdatedAt: remote.updatedAt,
-              serverUpdatedAt: remote.updatedAt,
-              extractionQualityScore: remote.extractionQualityScore,
-            });
+            merged.push(this.formatRemoteContact(remote));
           }
         } else {
-          // Local has server ID, but not returned by server (could be deleted on server).
-          // If clean, drop it. If dirty, keep it so it can sync.
           if (local.syncStatus === 'pending' || local.syncStatus === 'failed') {
             merged.push(local);
           }
         }
       }
 
-      // Add remaining remote contacts not in local
       for (const remote of remoteContacts) {
-        if (!mergedRemoteIds.has(remote._id)) {
-          // Check for duplicate name/email/phone to prevent duplicate cards
-          const rcName = remote.name.trim().toLowerCase();
+        if (!remoteIdsHandled.has(remote._id)) {
+          const rcName = (remote.name || '').trim().toLowerCase();
           const rcPhones = (remote.phones || []).map((p: any) => normalizePhone(p.value)).filter(Boolean);
           const rcEmails = (remote.emails || []).map((e: any) => normalizeEmail(e.value)).filter(Boolean);
 
-          const isDup = merged.some(c => {
-            const hasSameName = c.name.trim().toLowerCase() === rcName;
-            const hasSamePhone = (c.phones || []).some(p => rcPhones.includes(normalizePhone(p.value)));
-            const hasSameEmail = (c.emails || []).some(e => rcEmails.includes(normalizeEmail(e.value)));
-            return hasSameName || hasSamePhone || hasSameEmail;
+          const isDuplicate = merged.some((c) => {
+            const sameName = c.name.trim().toLowerCase() === rcName;
+            const samePhone = (c.phones || []).some((p: any) => rcPhones.includes(normalizePhone(p.value)));
+            const sameEmail = (c.emails || []).some((e: any) => rcEmails.includes(normalizeEmail(e.value)));
+            return sameName || samePhone || sameEmail;
           });
 
-          if (!isDup) {
-            merged.push({
-              id: remote._id,
-              name: remote.name,
-              phones: remote.phones || [],
-              emails: remote.emails || [],
-              websites: remote.websites || [],
-              company: remote.company,
-              designation: remote.designation,
-              officeAddress: remote.officeAddress,
-              category: remote.category,
-              nativeContactId: remote.nativeContactId,
-              syncStatus: 'synced',
-              localUpdatedAt: remote.updatedAt,
-              serverUpdatedAt: remote.updatedAt,
-              extractionQualityScore: remote.extractionQualityScore,
-            });
+          if (!isDuplicate) {
+            merged.push(this.formatRemoteContact(remote));
           }
         }
       }
 
       this.contacts = merged;
       await this.persistLocal();
-
-      // 3. Upload any local-only pending contacts to backend
       await this.syncPendingContacts(true);
     } catch (err) {
-      console.warn('Sync on login failed:', err);
+      console.warn('Initial cloud sync after login failed:', err);
     }
   }
 
-  // Clear all data on logout
+  private formatRemoteContact(remote: any): ContactData {
+    return {
+      id: remote._id,
+      name: remote.name,
+      phones: remote.phones || [],
+      emails: remote.emails || [],
+      websites: remote.websites || [],
+      company: remote.company,
+      designation: remote.designation,
+      officeAddress: remote.officeAddress,
+      category: remote.category,
+      nativeContactId: remote.nativeContactId,
+      syncStatus: 'synced',
+      localUpdatedAt: remote.updatedAt,
+      serverUpdatedAt: remote.updatedAt,
+      extractionQualityScore: remote.extractionQualityScore,
+    };
+  }
+
   public async clearAll() {
+    const userId = this.currentUserId || 'guest';
     this.contacts = [];
-    await this.persistLocal();
+    this.initialized = false;
+
+    try {
+      await AsyncStorage.removeItem(`@quickbiz_contacts_${userId}`);
+      await AsyncStorage.removeItem(`@quickbiz_pending_deletions_${userId}`);
+    } catch {
+      // Ignore
+    }
+
+    this.currentUserId = null;
   }
 }
 

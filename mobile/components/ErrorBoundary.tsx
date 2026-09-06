@@ -2,7 +2,9 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { PrimaryButton } from './ui/PrimaryButton';
 import { SecondaryButton } from './ui/SecondaryButton';
+import { SunsetStripe } from './ui/SunsetStripe';
 import { IconSymbol } from './ui/icon-symbol';
+import { Palette, Typography, BorderRadius } from '@/constants/theme';
 import { router } from 'expo-router';
 
 interface Props {
@@ -23,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[ErrorBoundary] Caught JavaScript rendering error:', error, errorInfo);
+    console.error('[ErrorBoundary] Caught rendering error:', error, errorInfo);
   }
 
   private handleTryAgain = () => {
@@ -44,12 +46,17 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <SafeAreaView style={styles.container}>
           <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <IconSymbol name="exclamationmark.triangle.fill" size={48} color="#EF4444" />
+            <View style={styles.iconTile}>
+              <IconSymbol
+                name="exclamationmark.triangle.fill"
+                size={32}
+                color={Palette.primary}
+              />
             </View>
-            <Text style={styles.title}>Oops, Something Went Wrong</Text>
+            <Text style={styles.title}>System Interruption</Text>
             <Text style={styles.message}>
-              An unexpected rendering error occurred. The application has been kept stable. You can try reloading the page or return to the main dashboard.
+              An unexpected display exception occurred. Application state has been
+              kept isolated. You can reload this view or return to the main dashboard.
             </Text>
             <View style={styles.actions}>
               <PrimaryButton
@@ -57,14 +64,15 @@ export class ErrorBoundary extends Component<Props, State> {
                 onPress={this.handleTryAgain}
                 style={styles.button}
               />
-              <View style={{ height: 12 }} />
               <SecondaryButton
-                title="Return Home"
+                title="Return to Dashboard"
                 onPress={this.handleReturnHome}
+                variant="outline"
                 style={styles.button}
               />
             </View>
           </View>
+          <SunsetStripe height={4} style={styles.bottomStripe} />
         </SafeAreaView>
       );
     }
@@ -76,44 +84,54 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B0F19',
-    justifyContent: 'center',
+    backgroundColor: Palette.canvas,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   content: {
+    flex: 1,
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    maxWidth: 400,
+    maxWidth: 420,
+    width: '100%',
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  iconTile: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.lg, // 12px
+    backgroundColor: Palette.cream,
+    borderWidth: 1,
+    borderColor: Palette.beigeDeep,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 12,
+    fontFamily: Typography.fontFamily.serif,
+    fontSize: 26,
+    fontWeight: '400',
+    color: Palette.ink,
     textAlign: 'center',
+    letterSpacing: -0.5,
+    marginBottom: 10,
   },
   message: {
+    fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    color: '#94A3B8',
+    color: Palette.slate,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 32,
+    marginBottom: 28,
   },
   actions: {
     width: '100%',
-    paddingHorizontal: 16,
+    gap: 12,
   },
   button: {
+    width: '100%',
+  },
+  bottomStripe: {
     width: '100%',
   },
 });

@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Palette, Typography, BorderRadius } from '@/constants/theme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { SecondaryButton } from '@/components/ui/SecondaryButton';
+import { SunsetStripe } from '@/components/ui/SunsetStripe';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const completeOnboarding = async () => {
@@ -43,78 +41,97 @@ export default function OnboardingScreen() {
 
   const slides = [
     {
-      title: 'Turn Business Cards into Digital Contacts',
-      description: 'Simply point your camera at any physical business card to digitize it immediately. No more typing manual contact info.',
+      title: 'Turn Business Cards into Living Contacts',
+      description:
+        'Capture any printed card with your camera. Transform paper into organized directory records without manual typing.',
       icon: 'camera.fill',
     },
     {
-      title: 'Scan & Extract Automatically',
-      description: 'Our smart OCR engine reads the card and extracts the full name, phone number, email, company, title, and address in seconds.',
-      icon: 'paperplane.fill',
+      title: 'On-Device Optical Extraction',
+      description:
+        'Intelligent ML Kit OCR identifies names, direct phones, emails, company roles, and web domains with high accuracy.',
+      icon: 'doc.text.viewfinder',
     },
     {
-      title: 'Save & Backup Your Contacts',
-      description: 'Save extracted contacts directly to your phone\'s native Address Book and automatically back them up to your MongoDB cloud database.',
-      icon: 'globe',
+      title: 'Native Contacts & Cloud Redundancy',
+      description:
+        'Direct synchronization with your device address book plus secure cloud backup for cross-device access.',
+      icon: 'arrow.triangle.2.circlepath',
     },
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Top Header with Skip */}
       <View style={styles.header}>
-        {currentSlide < 2 && (
-          <TouchableOpacity onPress={handleSkip}>
-            <Text style={[styles.skipText, { color: colors.textSecondary }]}>Skip</Text>
+        {currentSlide > 0 ? (
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <IconSymbol name="chevron.left" size={18} color={Palette.ink} />
+            <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
+        ) : (
+          <View style={{ width: 60 }} />
+        )}
+
+        {currentSlide < 2 ? (
+          <TouchableOpacity
+            onPress={handleSkip}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
         )}
       </View>
 
+      {/* Slide Content */}
       <View style={styles.slideContainer}>
-        <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
-          <IconSymbol name={slides[currentSlide].icon as any} size={64} color={colors.primary} />
+        <View style={styles.iconTile}>
+          <IconSymbol
+            name={slides[currentSlide].icon as any}
+            size={40}
+            color={Palette.primary}
+          />
         </View>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {slides[currentSlide].title}
-        </Text>
-        <Text style={[styles.description, { color: colors.textSecondary }]}>
+
+        <Text style={styles.title}>{slides[currentSlide].title}</Text>
+        <Text style={styles.description}>
           {slides[currentSlide].description}
         </Text>
       </View>
 
+      {/* Footer Controls */}
       <View style={styles.footer}>
-        {/* Indicators */}
+        {/* Step Indicators */}
         <View style={styles.indicatorContainer}>
           {slides.map((_, index) => (
             <View
               key={index}
               style={[
                 styles.indicator,
-                { backgroundColor: colors.border },
-                currentSlide === index && { backgroundColor: colors.primary, width: 24 },
+                currentSlide === index && styles.indicatorActive,
               ]}
             />
           ))}
         </View>
 
-        {/* Buttons */}
+        {/* Action Button */}
         <View style={styles.buttonContainer}>
-          {currentSlide > 0 ? (
-            <SecondaryButton
-              title="Back"
-              onPress={handleBack}
-              style={styles.halfButton}
-            />
-          ) : (
-            <View style={styles.emptyButtonSpace} />
-          )}
-
           <PrimaryButton
-            title={currentSlide === 2 ? 'Get Started' : 'Next'}
+            title={currentSlide === 2 ? 'Get Started' : 'Continue'}
             onPress={handleNext}
-            style={currentSlide > 0 ? styles.halfButton : styles.fullButton}
+            style={styles.actionBtn}
           />
         </View>
       </View>
+
+      {/* Signature Sunset Stripe */}
+      <SunsetStripe height={4} />
     </SafeAreaView>
   );
 }
@@ -122,71 +139,91 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Palette.canvas,
+    justifyContent: 'space-between',
   },
   header: {
-    height: 48,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
   },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backText: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 14,
+    color: Palette.slate,
+    marginLeft: 4,
+  },
   skipText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 14,
+    color: Palette.primary,
+    fontWeight: '500',
   },
   slideContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 32,
-  },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+  },
+  iconTile: {
+    width: 88,
+    height: 88,
+    borderRadius: BorderRadius.lg, // 12px radius
+    backgroundColor: Palette.cream,
+    borderWidth: 1,
+    borderColor: Palette.beigeDeep,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontFamily: Typography.fontFamily.serif,
+    fontSize: 26,
+    fontWeight: '400',
+    color: Palette.ink,
     textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 36,
+    letterSpacing: -0.5,
+    lineHeight: 32,
+    marginBottom: 14,
   },
   description: {
-    fontSize: 16,
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 15,
+    color: Palette.slate,
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 12,
+    lineHeight: 22,
+    maxWidth: 320,
   },
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 28,
   },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 32,
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 24,
   },
   indicator: {
-    height: 6,
-    width: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Palette.hairlineStrong,
+  },
+  indicatorActive: {
+    width: 24,
+    backgroundColor: Palette.primary,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
+    width: '100%',
   },
-  fullButton: {
-    flex: 1,
-  },
-  halfButton: {
-    flex: 1,
-  },
-  emptyButtonSpace: {
-    flex: 0,
-    width: 0,
+  actionBtn: {
+    width: '100%',
   },
 });

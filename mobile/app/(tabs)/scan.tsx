@@ -1,15 +1,23 @@
 import React, { useState, useRef } from 'react';
 import {
-  StyleSheet, View, Text, SafeAreaView,
-  TouchableOpacity, ActivityIndicator, Image, Alert, Platform,
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
+  Alert,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '@/constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Palette } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { DarkButton } from '@/components/ui/DarkButton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SunsetStripe } from '@/components/ui/SunsetStripe';
 import { ocrService } from '@/services/ocr.service';
 
 export default function ScanScreen() {
@@ -24,52 +32,33 @@ export default function ScanScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const isWebPlatform = Platform.OS === 'web';
 
-  const handleEnterManually = async () => {
-    try {
-      const defaultCategory = await AsyncStorage.getItem('@quickbiz_default_category') || 'Other';
-      router.push({
-        pathname: '/review',
-        params: { category: defaultCategory }
-      });
-    } catch {
-      router.push('/review');
-    }
+  const handleEnterManually = () => {
+    router.push({
+      pathname: '/review',
+      params: { category: 'Other' },
+    });
   };
 
-  // ── Capture ────────────────────────────────────────────────────────────────
   const handleCapture = async () => {
     if (!cameraRef.current) return;
     try {
-      console.log('[SCANNER] cameraReady: true');
-      console.log('[SCANNER] permissionStatus: granted');
-      console.log('[SCANNER] captureStarted: true');
-
-      const startTime = Date.now();
-      // base64 not needed — ML Kit reads directly from the file URI
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: 0.85,
         skipProcessing: false,
       });
-      const captureTime = Date.now() - startTime;
 
       if (photo?.uri) {
         setPhotoUri(photo.uri);
-        console.log('[SCANNER] captureCompleted: true');
-        console.log('[SCANNER] imageUri: valid');
-        console.log(`[SCANNER] imageWidth: ${photo.width}`);
-        console.log(`[SCANNER] imageHeight: ${photo.height}`);
-        console.log(`[SCANNER] processingTime: ${captureTime}ms`);
         setScanState('preview');
       }
-    } catch (err: any) {
-      console.error('[SCANNER] Image Capture failed:', err.message);
+    } catch {
       Alert.alert(
         'Capture Error',
-        'Failed to take business card photo. Please enter details manually.',
+        'Failed to capture business card photo. Please enter details manually.',
         [
           { text: 'Enter Manually', onPress: handleEnterManually },
           { text: 'Cancel', style: 'cancel' },
-        ],
+        ]
       );
     }
   };
@@ -79,15 +68,12 @@ export default function ScanScreen() {
     setScanState('scan');
   };
 
-  // ── OCR — on-device ML Kit, no network ────────────────────────────────────
   const handleUsePhoto = async () => {
     if (!photoUri) return;
     setScanState('ocr');
 
     try {
-      console.log('[OCR] Starting on-device ML Kit OCR...');
       const { parsedData } = await ocrService.processImage(photoUri);
-      const defaultCategory = await AsyncStorage.getItem('@quickbiz_default_category') || 'Other';
 
       router.push({
         pathname: '/review',
@@ -100,30 +86,32 @@ export default function ScanScreen() {
           emailsJson: JSON.stringify(parsedData.emails || []),
           websitesJson: JSON.stringify(parsedData.websites || []),
           extractionQualityScore: String(parsedData.extractionQualityScore || 0),
-          category: defaultCategory,
+          category: 'Other',
         },
       });
 
       setPhotoUri(null);
       setScanState('scan');
     } catch (error: any) {
-      console.error('[OCR] ML Kit OCR failed:', error.message);
-
       let alertTitle = "Couldn't Read Card";
       let alertMessage =
-        "Couldn't read this business card. Please try again or enter details manually.";
+        "Couldn't read this business card clearly. Please retake the photo or enter details manually.";
 
-      if (error.message === 'OCR_NO_TEXT') {
-        alertTitle = 'No Text Found';
+      if (error.message === 'OCR_NATIVE_UNAVAILABLE') {
+        alertTitle = 'Scanning Unavailable';
         alertMessage =
-          'No text could be detected on this card. Make sure the card is well-lit and the text is clearly in focus.';
+          'Business card scanning is unavailable in this build. Please use the QuickBiz development/installed app.';
+      } else if (error.message === 'OCR_NO_TEXT') {
+        alertTitle = 'No Text Detected';
+        alertMessage =
+          'No text could be found on this card. Please ensure the card is well lit, flat, and in sharp focus.';
       } else if (error.message === 'OCR_NOT_SUPPORTED_ON_WEB') {
-        alertTitle = 'Not Supported';
+        alertTitle = 'Not Supported on Web';
         alertMessage = 'Card scanning is not supported on web. Please enter details manually.';
       } else if (error.message === 'OCR_ENGINE_ERROR') {
-        alertTitle = 'Scanner Error';
+        alertTitle = 'Recognition Engine Error';
         alertMessage =
-          'The text recognition engine encountered an error. Please retake the photo.';
+          'The on-device text recognition engine encountered an issue. Please retake the photo.';
       }
 
       Alert.alert(alertTitle, alertMessage, [
@@ -135,7 +123,7 @@ export default function ScanScreen() {
             setScanState('scan');
           },
         },
-        { text: 'Retry', onPress: () => setScanState('preview') },
+        { text: 'Retry OCR', onPress: () => setScanState('preview') },
         {
           text: 'Retake',
           onPress: () => {
@@ -147,79 +135,139 @@ export default function ScanScreen() {
     }
   };
 
-  // ── Manual-entry fallback UI ───────────────────────────────────────────────
   const renderManualEntryLanding = (title: string, message: string) => (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center', padding: 24 }]}
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: Spacing.xl,
+        },
+      ]}
     >
-      <IconSymbol name="camera.fill" size={64} color="#94A3B8" style={{ marginBottom: 20 }} />
-      <Text style={[styles.permissionTitle, { color: '#FFFFFF' }]}>{title}</Text>
-      <Text style={styles.permissionSub}>{message}</Text>
+      <View
+        style={[
+          styles.fallbackIconCircle,
+          {
+            backgroundColor: colors.surfaceCream,
+            borderColor: colors.borderBeige,
+          },
+        ]}
+      >
+        <IconSymbol name="camera.fill" size={32} color={Palette.primary} />
+      </View>
+      <Text style={[styles.fallbackTitle, { color: colors.textPrimary }]}>{title}</Text>
+      <Text style={[styles.fallbackSub, { color: colors.textSecondary }]}>{message}</Text>
       <PrimaryButton
         title="Enter Details Manually"
         onPress={handleEnterManually}
-        style={styles.permissionBtn}
+        style={styles.fallbackBtn}
       />
       {!isWebPlatform && (
-        <TouchableOpacity onPress={requestPermission} style={{ marginTop: 24 }}>
-          <Text style={{ color: colors.primary, fontWeight: '600' }}>Grant Camera Permissions</Text>
+        <TouchableOpacity onPress={requestPermission} style={{ marginTop: Spacing.lg }}>
+          <Text style={{ color: Palette.primary, ...Typography.bodySmMedium }}>
+            Grant Camera Permissions
+          </Text>
         </TouchableOpacity>
       )}
     </SafeAreaView>
   );
 
-  // ── Guards ─────────────────────────────────────────────────────────────────
   if (isWebPlatform) {
     return renderManualEntryLanding(
       'Manual Entry Mode',
-      'Card scanning is disabled in web browsers. Tap the button below to enter contact details directly.',
+      'Card scanning using native camera is unavailable in web browsers. You can input contacts directly using manual entry.'
     );
   }
 
   if (!permission) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ color: '#FFFFFF', marginTop: 12 }}>Loading Camera...</Text>
+      <SafeAreaView
+        style={[
+          styles.container,
+          {
+            backgroundColor: Palette.surfaceCode,
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+        ]}
+      >
+        <ActivityIndicator size="small" color={Palette.primary} />
+        <Text style={[styles.loadingText, { color: Palette.onDarkMuted }]}>
+          Initializing camera hardware
+        </Text>
       </SafeAreaView>
     );
   }
 
   if (!permission.granted) {
     return renderManualEntryLanding(
-      'Manual Entry Mode',
-      'Camera access is disabled. Please grant camera permission to scan business cards or use Manual Entry Mode.',
+      'Camera Permission Required',
+      'QuickBiz requires camera access to scan business cards. You can grant access or use manual contact entry.'
     );
   }
 
-  // ── Main UI ────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#0B0F19' }]}>
-      {/* Header */}
+    <SafeAreaView style={[styles.container, { backgroundColor: Palette.surfaceCode }]} edges={['top', 'left', 'right']}>
+      {/* Top Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Scan Business Card</Text>
-        <TouchableOpacity onPress={handleEnterManually} style={styles.toggleSimBtn}>
-          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>Manual Entry</Text>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.headerTitle}>Scan Business Card</Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={handleEnterManually}
+          style={styles.manualEntryHeaderBtn}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Enter contact manually"
+        >
+          <IconSymbol name="pencil" size={13} color="#FFFFFF" />
+          <Text style={styles.manualEntryHeaderText}>Manual</Text>
         </TouchableOpacity>
       </View>
 
       {/* Camera / Scan state */}
       {scanState === 'scan' && (
         <View style={{ flex: 1 }}>
-          <CameraView style={styles.camera} ref={cameraRef}>
-            <View style={styles.overlay}>
-              <View style={styles.viewFinderContainer}>
-                <View style={[styles.cardBorder, { borderColor: '#FFFFFF' }]}>
-                  <Text style={styles.helperTextInside}>Position Card Here</Text>
+          <View style={styles.cameraWrapper}>
+            <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} />
+
+            <View pointerEvents="box-none" style={styles.overlay}>
+              {/* Frame Viewfinder */}
+              <View style={styles.viewFinderContainer} pointerEvents="none">
+                <View style={styles.businessCardFrame}>
+                  {/* Mistral Orange Corner Accents (#FA520F) */}
+                  <View style={[styles.cornerBracket, styles.cornerTL]} />
+                  <View style={[styles.cornerBracket, styles.cornerTR]} />
+                  <View style={[styles.cornerBracket, styles.cornerBL]} />
+                  <View style={[styles.cornerBracket, styles.cornerBR]} />
+
+                  <View style={styles.guideBadge}>
+                    <Text style={styles.guideText}>Position business card within frame</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </CameraView>
+          </View>
 
-          <Text style={styles.instructionText}>Place the entire card inside the frame.</Text>
+          <View style={styles.instructionContainer}>
+            <Text style={styles.instructionText}>
+              Hold steady in clear light. Text will be recognized on-device.
+            </Text>
+          </View>
 
+          {/* Capture Controls */}
           <View style={styles.controlsContainer}>
-            <TouchableOpacity onPress={handleCapture} style={styles.captureOuterCircle}>
+            <TouchableOpacity
+              onPress={handleCapture}
+              activeOpacity={0.75}
+              style={styles.captureOuterCircle}
+              accessibilityRole="button"
+              accessibilityLabel="Capture photo"
+            >
               <View style={styles.captureInnerCircle} />
             </TouchableOpacity>
           </View>
@@ -228,41 +276,79 @@ export default function ScanScreen() {
 
       {/* Preview state */}
       {scanState === 'preview' && (
-        <View style={{ flex: 1 }}>
-          <View style={styles.viewFinderContainer}>
-            {photoUri && <Image source={{ uri: photoUri }} style={styles.previewImage} />}
+        <View style={styles.previewContainer}>
+          <View style={styles.previewImageContainer}>
+            {photoUri && (
+              <Image source={{ uri: photoUri }} style={styles.previewImage} resizeMode="contain" />
+            )}
           </View>
 
-          <Text style={styles.instructionText}>Confirm if the photo is sharp and readable.</Text>
+          <View style={styles.previewInfo}>
+            <Text style={styles.previewTitle}>Review Card Photo</Text>
+            <Text style={styles.previewSubtitle}>
+              Ensure card text is in sharp focus before running optical character recognition.
+            </Text>
+          </View>
 
           <View style={styles.previewControls}>
-            <TouchableOpacity
+            <DarkButton
+              title="Retake"
               onPress={handleRetake}
-              style={[styles.previewButton, { borderColor: '#FFFFFF', borderWidth: 1 }]}
-            >
-              <Text style={styles.previewButtonText}>Retake</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+              style={styles.previewBtn}
+            />
+            <PrimaryButton
+              title="Extract Details"
               onPress={handleUsePhoto}
-              style={[styles.previewButton, { backgroundColor: colors.primary }]}
-            >
-              <Text style={[styles.previewButtonText, { color: '#FFFFFF' }]}>Use Photo</Text>
-            </TouchableOpacity>
+              style={styles.previewBtn}
+              icon={<IconSymbol name="checkmark.circle.fill" size={16} color="#FFFFFF" />}
+            />
           </View>
         </View>
       )}
 
-      {/* OCR processing state */}
       {scanState === 'ocr' && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingTitle}>Analyzing Business Card...</Text>
-          <Text style={styles.loadingSub}>Extracting contact information on-device</Text>
+        <View style={[styles.ocrContainer, { backgroundColor: colors.background }]}>
+          <View
+            style={[
+              styles.ocrPanel,
+              {
+                backgroundColor: colors.surfaceCream,
+                borderColor: colors.borderBeige,
+              },
+            ]}
+          >
+            <ActivityIndicator size="small" color={Palette.primary} style={styles.ocrSpinner} />
+            <Text style={[styles.ocrTitle, { color: colors.textPrimary }]}>
+              Reading your card
+            </Text>
+            <Text style={[styles.ocrSubtitle, { color: colors.textSecondary }]}>
+              Extracting contact details and structuring fields on-device
+            </Text>
 
-          <View style={styles.ocrStatusList}>
-            <Text style={styles.ocrStatusItem}>✓ Running ML Kit OCR...</Text>
-            <Text style={styles.ocrStatusItem}>✓ Reconstructing text structures...</Text>
-            <Text style={styles.ocrStatusItem}>✓ Parsing contact fields...</Text>
+            <View style={styles.ocrSteps}>
+              <View style={styles.ocrStepRow}>
+                <IconSymbol name="checkmark.circle.fill" size={15} color={Palette.primary} />
+                <Text style={[styles.ocrStepText, { color: colors.textPrimary }]}>
+                  Reading layout geometry
+                </Text>
+              </View>
+              <View style={styles.ocrStepRow}>
+                <IconSymbol name="checkmark.circle.fill" size={15} color={Palette.primary} />
+                <Text style={[styles.ocrStepText, { color: colors.textPrimary }]}>
+                  Analyzing typography with ML Kit
+                </Text>
+              </View>
+              <View style={styles.ocrStepRow}>
+                <IconSymbol name="checkmark.circle.fill" size={15} color={Palette.primary} />
+                <Text style={[styles.ocrStepText, { color: colors.textPrimary }]}>
+                  Formatting phone, email, and address
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.ocrStripeWrapper}>
+              <SunsetStripe height={3} />
+            </View>
           </View>
         </View>
       )}
@@ -271,122 +357,247 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    flex: 1,
+  },
   header: {
-    height: 56,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    paddingHorizontal: Spacing.xl,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#2C2C2E',
   },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#FFFFFF' },
-  toggleSimBtn: {
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    ...Typography.heading4,
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  manualEntryHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
+    borderRadius: BorderRadius.md,
+    backgroundColor: '#2C2C2E',
+    gap: 6,
   },
-  camera: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  manualEntryHeaderText: {
+    color: '#FFFFFF',
+    ...Typography.bodySmMedium,
+    fontSize: 13,
+  },
+  cameraWrapper: {
+    flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
   viewFinderContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: Spacing.xl,
   },
-  cardBorder: {
+  businessCardFrame: {
     width: '100%',
-    aspectRatio: 1.586,
-    borderWidth: 2,
-    borderRadius: 16,
-    borderStyle: 'dashed',
-    alignItems: 'center',
+    aspectRatio: 1.586, // Standard 3.5" x 2" business card ratio
+    position: 'relative',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  helperTextInside: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
+  cornerBracket: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderColor: Palette.primary,
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopLeftRadius: BorderRadius.sm,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderTopRightRadius: BorderRadius.sm,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderBottomLeftRadius: BorderRadius.sm,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomRightRadius: BorderRadius.sm,
+  },
+  guideBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  guideText: {
+    ...Typography.caption,
+    color: '#FFFFFF',
+    fontSize: 12,
+  },
+  instructionContainer: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    alignItems: 'center',
+  },
   instructionText: {
+    ...Typography.caption,
+    color: Palette.onDarkMuted,
     textAlign: 'center',
-    color: '#94A3B8',
-    fontSize: 14,
-    marginVertical: 16,
   },
   controlsContainer: {
-    height: 100,
+    height: 90,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 20,
+    paddingBottom: Spacing.md,
   },
   captureOuterCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   captureInnerCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Palette.primary,
+  },
+  previewContainer: {
+    flex: 1,
+    padding: Spacing.xl,
+    justifyContent: 'space-between',
+  },
+  previewImageContainer: {
+    flex: 1,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+    marginBottom: Spacing.md,
   },
   previewImage: {
     width: '100%',
-    aspectRatio: 1.586,
-    borderRadius: 16,
-    resizeMode: 'cover',
+    height: '100%',
+  },
+  previewInfo: {
+    marginBottom: Spacing.lg,
+  },
+  previewTitle: {
+    ...Typography.heading3,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  previewSubtitle: {
+    ...Typography.bodySm,
+    color: Palette.onDarkMuted,
   },
   previewControls: {
     flexDirection: 'row',
-    gap: 16,
-    paddingHorizontal: 24,
-    paddingBottom: 30,
+    gap: Spacing.md,
   },
-  previewButton: {
+  previewBtn: {
     flex: 1,
-    height: 52,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  previewButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  loadingContainer: {
+  ocrContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
   },
-  loadingTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 24,
-    marginBottom: 8,
+  ocrPanel: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.xl,
+    alignItems: 'center',
   },
-  loadingSub: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 32,
+  ocrSpinner: {
+    marginBottom: Spacing.md,
+  },
+  ocrTitle: {
+    ...Typography.heading1,
+    fontSize: 24,
     textAlign: 'center',
+    marginBottom: 6,
   },
-  ocrStatusList: {
-    alignSelf: 'stretch',
-    backgroundColor: '#1E293B',
-    padding: 20,
-    borderRadius: 16,
+  ocrSubtitle: {
+    ...Typography.bodySm,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+  },
+  ocrSteps: {
+    width: '100%',
     gap: 12,
+    marginBottom: Spacing.xl,
   },
-  ocrStatusItem: { color: '#FFFFFF', fontSize: 15, fontWeight: '500' },
-  permissionTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  permissionSub: {
-    color: '#94A3B8',
-    fontSize: 14,
+  ocrStepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  ocrStepText: {
+    ...Typography.bodySmMedium,
+  },
+  ocrStripeWrapper: {
+    width: '100%',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  loadingText: {
+    ...Typography.caption,
+    marginTop: Spacing.sm,
+  },
+  fallbackIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  fallbackTitle: {
+    ...Typography.heading3,
+    marginBottom: Spacing.xs,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
   },
-  permissionBtn: { width: '100%' },
+  fallbackSub: {
+    ...Typography.bodyMd,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    maxWidth: 300,
+  },
+  fallbackBtn: {
+    minWidth: 220,
+  },
 });

@@ -9,30 +9,33 @@ import {
 } from 'react-native';
 import { BorderRadius, Typography, Palette } from '@/constants/theme';
 
-export interface PrimaryButtonProps {
+export interface DangerButtonProps {
   title: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
+  variant?: 'solid' | 'subtle';
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
 }
 
 /**
- * Mistral AI Primary Button
- * Saturated Orange #FA520F background, 8px radius, white text, pressed state #CC3A05.
+ * Mistral AI Danger / Destructive Button
+ * 8px radius, restrained red accents, supporting solid and subtle variants.
  */
-export function PrimaryButton({
+export function DangerButton({
   title,
   onPress,
   loading = false,
   disabled = false,
+  variant = 'subtle',
   style,
   textStyle,
   icon,
-}: PrimaryButtonProps) {
+}: DangerButtonProps) {
   const [isPressed, setIsPressed] = useState(false);
+  const isSubtle = variant === 'subtle';
 
   return (
     <TouchableOpacity
@@ -43,17 +46,25 @@ export function PrimaryButton({
       disabled={disabled || loading}
       style={[
         styles.button,
-        isPressed && styles.buttonPressed,
+        isSubtle ? styles.buttonSubtle : styles.buttonSolid,
+        isPressed && (isSubtle ? styles.buttonSubtlePressed : styles.buttonSolidPressed),
         disabled && styles.buttonDisabled,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" size="small" />
+        <ActivityIndicator color={isSubtle ? Palette.error : '#FFFFFF'} size="small" />
       ) : (
         <React.Fragment>
           {icon}
-          <Text style={[styles.text, icon ? { marginLeft: 8 } : null, textStyle]}>
+          <Text
+            style={[
+              styles.text,
+              isSubtle ? styles.textSubtle : styles.textSolid,
+              icon ? { marginLeft: 8 } : null,
+              textStyle,
+            ]}
+          >
             {title}
           </Text>
         </React.Fragment>
@@ -66,26 +77,39 @@ const styles = StyleSheet.create({
   button: {
     height: 48,
     minHeight: 44,
-    borderRadius: BorderRadius.md, // Exact 8px per Mistral design system
-    backgroundColor: Palette.primary,
+    borderRadius: BorderRadius.md, // 8px
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  buttonPressed: {
-    backgroundColor: Palette.primaryDeep, // #CC3A05
+  buttonSolid: {
+    backgroundColor: Palette.error,
+  },
+  buttonSolidPressed: {
+    backgroundColor: '#B91C1C',
+  },
+  buttonSubtle: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  buttonSubtlePressed: {
+    backgroundColor: '#FEF2F2',
   },
   buttonDisabled: {
-    backgroundColor: Palette.stone,
-    opacity: 0.6,
+    opacity: 0.5,
   },
   text: {
-    color: Palette.onPrimary,
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
     fontWeight: '500',
     lineHeight: 18,
-    letterSpacing: -0.1,
+  },
+  textSolid: {
+    color: '#FFFFFF',
+  },
+  textSubtle: {
+    color: Palette.error,
   },
 });

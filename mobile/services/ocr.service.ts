@@ -1,97 +1,51 @@
 import { Platform } from 'react-native';
-import { contactParserService } from './contact-parser.service';
-import { ContactData } from '@/components/ui/ContactCard';
+import { parseOcrResult } from './contact-parser.service';
+import { ContactData } from './contact.store';
 
-let recognizeText: any = null;
+// expo-mlkit-ocr is a native Expo Module compiled into the Android/iOS binary.
+// In Expo Go or web, require will fail because native modules aren't linked.
+let mlKitModule: any = null;
 try {
-  recognizeText = require('expo-mlkit-ocr').recognizeText;
-} catch (e: any) {
-  console.warn('[OCR] expo-mlkit-ocr native module not available in this client environment:', e.message);
-}
-console.log(`[OCR] ML Kit native module available: ${recognizeText !== null}`);
-
-// ─── Types (matches expo-mlkit-ocr RecognitionResult) ──────────────────────────
-export interface MlKitOcrResult {
-  rawText: string;
-  blocks: { text: string; confidence: number }[];
-  lines: { text: string; confidence: number }[];
-  confidence: number;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  mlKitModule = require('expo-mlkit-ocr');
+} catch {
+  // Native module only available in development build or standalone app
 }
 
-// ─── OcrService ────────────────────────────────────────────────────────────────
-// Adapter between the UI and the on-device ML Kit engine.
-// The UI ONLY calls:  ocrService.processImage(imageUri)
-// The UI never imports expo-mlkit-ocr directly.
-class OcrService {
-  /**
-   * Run on-device OCR on a local image URI.
-   * Returns normalized parsedData for the Review screen.
-   *
-   * @param imageUri  Local file URI from expo-camera (file://...)
-   */
-  public async processImage(
-    imageUri: string,
-  ): Promise<{ rawText: string; parsedData: Partial<ContactData> }> {
-    if (!imageUri) {
-      throw new Error('Image URI is required.');
-    }
+export const isOcrAvailable = (): boolean => {
+  return Platform.OS !== 'web' && mlKitModule != null && typeof mlKitModule.recognizeText === 'function';
+};
 
-    // expo-mlkit-ocr is native-only — gracefully reject on web
-    if (Platform.OS === 'web') {
-      throw new Error('OCR_NOT_SUPPORTED_ON_WEB');
-    }
-
-    console.log('[OCR] ML Kit OCR started (on-device)');
-
-    if (!recognizeText) {
-      console.error('[OCR] recognizeText is not loaded. Safe mode fallback.');
-      throw new Error('OCR_ENGINE_ERROR');
-    }
-
-    let recognition;
-    try {
-      recognition = await recognizeText(imageUri);
-    } catch (err: any) {
-      console.error('[OCR] ML Kit recognizeText failed:', err?.message || err);
-      throw new Error('OCR_ENGINE_ERROR');
-    }
-
-    const rawText = recognition.text ?? '';
-
-    if (!rawText.trim()) {
-      console.log('[OCR] ML Kit returned no text.');
-      throw new Error('OCR_NO_TEXT');
-    }
-
-    console.log(`[OCR] ML Kit OCR completed — ${rawText.length} chars`);
-
-    // Normalise the ML Kit block/line structure into the shape
-    // contact-parser.service.ts expects.
-    const normalised = normaliseMlKitResult(recognition);
-
-    // Parse into ContactData fields
-    const parsedData = contactParserService.parseOcrResult(normalised);
-
-    return { rawText, parsedData };
+export const processCardImage = async (
+  imageUri: string
+): Promise<{ rawText: string; parsedData: Partial<ContactData> }> => {
+  if (!imageUri) {
+    throw new Error('Image URI is required.');
   }
-}
 
-// ─── Normaliser ────────────────────────────────────────────────────────────────
-// expo-mlkit-ocr returns: { text, blocks: [ { text, lines: [...] } ] }
-// contact-parser expects:  { rawText, blocks: [{ text, confidence }], lines: [{ text, confidence }] }
-function normaliseMlKitResult(recognition: {
-  text: string;
-  blocks: {
-    text: string;
-    lines?: { text: string; elements?: { text: string }[] }[];
-  }[];
-}): MlKitOcrResult {
-  const blocks: { text: string; confidence: number }[] = [];
+  if (Platform.OS === 'web') {
+    throw new Error('OCR_NOT_SUPPORTED_ON_WEB');
+  }
+
+  if (!isOcrAvailable()) {
+    throw new Error('OCR_NATIVE_UNAVAILABLE');
+  }
+
+  let recognition: any;
+  try {
+    recognition = await mlKitModule.recognizeText(imageUri);
+  } catch {
+    throw new Error('OCR_ENGINE_ERROR');
+  }
+
+  const rawText = recognition?.text ?? '';
+  if (!rawText.trim()) {
+    throw new Error('OCR_NO_TEXT');
+  }
+
+  // Extract text lines from recognition blocks
   const lines: { text: string; confidence: number }[] = [];
-
   for (const block of recognition.blocks ?? []) {
-    blocks.push({ text: block.text, confidence: 1 });
-
     for (const line of block.lines ?? []) {
       if (line.text?.trim()) {
         lines.push({ text: line.text.trim(), confidence: 1 });
@@ -99,13 +53,19 @@ function normaliseMlKitResult(recognition: {
     }
   }
 
-  return {
-    rawText: recognition.text,
-    blocks,
+  const parsedData = parseOcrResult({
+    rawText,
     lines,
+    blocks: (recognition.blocks ?? []).map((b: any) => ({ text: b.text, confidence: 1 })),
     confidence: 1,
-  };
-}
+  });
 
-export const ocrService = new OcrService();
+  return { rawText, parsedData };
+};
+
+export const ocrService = {
+  isAvailable: isOcrAvailable,
+  processImage: processCardImage,
+};
+
 export default ocrService;

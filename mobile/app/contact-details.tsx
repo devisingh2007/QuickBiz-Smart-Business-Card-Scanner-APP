@@ -1,77 +1,107 @@
-import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import React, { useMemo } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Linking,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Palette, Typography, BorderRadius } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
+import { DangerButton } from '@/components/ui/DangerButton';
 import { contactStore } from '@/services/contact.store';
 
 export default function ContactDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
 
-  const {
-    id,
-    name,
-    company,
-    designation,
-    officeAddress,
-    category,
-    nativeContactId,
-  } = params as {
-    id: string;
-    name: string;
-    company?: string;
-    designation?: string;
-    officeAddress?: string;
-    category?: string;
-    nativeContactId?: string;
-  };
+  // If navigated with only ID, look up contact in local store
+  const storedContact = useMemo(() => {
+    if (params.id) {
+      return contactStore.getContacts().find((c) => c.id === params.id) || null;
+    }
+    return null;
+  }, [params.id]);
+
+  const id = (params.id as string) || storedContact?.id || '';
+  const name = (params.name as string) || storedContact?.name || 'Unnamed Contact';
+  const company = (params.company as string) || storedContact?.company || '';
+  const designation =
+    (params.designation as string) || storedContact?.designation || '';
+  const officeAddress =
+    (params.officeAddress as string) || storedContact?.officeAddress || '';
+  const category = (params.category as string) || storedContact?.category || '';
+  const nativeContactId =
+    (params.nativeContactId as string) || storedContact?.nativeContactId || '';
 
   // Safely parse array structures
-  const phones: { value: string; type: string; label: string }[] = (() => {
+  const phones: { value: string; type?: string; label?: string }[] = useMemo(() => {
     if (params.phonesJson) {
       try {
         const parsed = JSON.parse(params.phonesJson as string);
-        if (parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
+    }
+    if (storedContact?.phones && storedContact.phones.length > 0) {
+      return storedContact.phones;
     }
     if (params.phone) {
       return [{ value: params.phone as string, type: 'mobile', label: 'Mobile' }];
     }
+    if (storedContact?.phone) {
+      return [{ value: storedContact.phone, type: 'mobile', label: 'Mobile' }];
+    }
     return [];
-  })();
+  }, [params.phonesJson, params.phone, storedContact]);
 
-  const emails: { value: string; type: string }[] = (() => {
+  const emails: { value: string; type?: string }[] = useMemo(() => {
     if (params.emailsJson) {
       try {
         const parsed = JSON.parse(params.emailsJson as string);
-        if (parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
+    }
+    if (storedContact?.emails && storedContact.emails.length > 0) {
+      return storedContact.emails;
     }
     if (params.email) {
       return [{ value: params.email as string, type: 'work' }];
     }
+    if (storedContact?.email) {
+      return [{ value: storedContact.email, type: 'work' }];
+    }
     return [];
-  })();
+  }, [params.emailsJson, params.email, storedContact]);
 
-  const websites: { value: string; type: string }[] = (() => {
+  const websites: { value: string; type?: string }[] = useMemo(() => {
     if (params.websitesJson) {
       try {
         const parsed = JSON.parse(params.websitesJson as string);
-        if (parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
+    }
+    if (storedContact?.websites && storedContact.websites.length > 0) {
+      return storedContact.websites;
     }
     if (params.website) {
       return [{ value: params.website as string, type: 'work' }];
     }
+    if (storedContact?.website) {
+      return [{ value: storedContact.website, type: 'work' }];
+    }
     return [];
-  })();
+  }, [params.websitesJson, params.website, storedContact]);
 
-  const qualityScore = params.extractionQualityScore ? Number(params.extractionQualityScore) : null;
+  const qualityScore = params.extractionQualityScore
+    ? Number(params.extractionQualityScore)
+    : storedContact?.extractionQualityScore || null;
 
   const handleCall = (number: string) => {
     Linking.openURL(`tel:${number.replace(/[^\d+]/g, '')}`);
@@ -88,7 +118,7 @@ export default function ContactDetailsScreen() {
 
   const handleCopy = async (text: string, label: string) => {
     await Clipboard.setStringAsync(text);
-    Alert.alert('Copied', `${label} copied to clipboard!`);
+    Alert.alert('Copied', `${label} copied to clipboard.`);
   };
 
   const handleEdit = () => {
@@ -105,7 +135,7 @@ export default function ContactDetailsScreen() {
         phonesJson: JSON.stringify(phones),
         emailsJson: JSON.stringify(emails),
         websitesJson: JSON.stringify(websites),
-        extractionQualityScore: qualityScore ? String(qualityScore) : undefined
+        extractionQualityScore: qualityScore ? String(qualityScore) : undefined,
       },
     });
   };
@@ -113,7 +143,7 @@ export default function ContactDetailsScreen() {
   const handleDelete = () => {
     Alert.alert(
       'Delete Contact',
-      `Are you sure you want to delete ${name} from QuickBiz? This will also remove the linked contact from your device's address book.`,
+      `Are you sure you want to delete ${name}? This will remove the record from QuickBiz and your local address book.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -135,350 +165,400 @@ export default function ContactDetailsScreen() {
     );
   };
 
-  const renderQualityBadge = () => {
-    if (qualityScore === null) return null;
-    let badgeColor = '#10B981'; // Green
-    if (qualityScore < 50) badgeColor = '#EF4444'; // Red
-    else if (qualityScore < 75) badgeColor = '#F59E0B'; // Orange
-
-    return (
-      <View style={[styles.qualityBadge, { backgroundColor: badgeColor }]}>
-        <Text style={styles.qualityText}>QuickBiz Quality Score: {qualityScore}%</Text>
-      </View>
-    );
-  };
+  const primaryPhone = phones.length > 0 ? phones[0].value : null;
+  const primaryEmail = emails.length > 0 ? emails[0].value : null;
+  const primaryWebsite = websites.length > 0 ? websites[0].value : null;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <IconSymbol name="chevron.left" size={24} color={colors.primary} />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* Top Editorial Navigation */}
+      <View style={styles.navBar}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.navBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <IconSymbol name="chevron.left" size={20} color={Palette.ink} />
+          <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Contact Details</Text>
-        <TouchableOpacity onPress={handleEdit} style={styles.editHeaderBtn}>
-          <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>Edit</Text>
+
+        <TouchableOpacity
+          onPress={handleEdit}
+          style={styles.editBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.editLabel}>Edit</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {renderQualityBadge()}
-
         {/* Profile Card Header */}
         <View style={styles.profileSection}>
-          <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
-            <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {name ? name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase() : '??'}
+          <Avatar name={name} size="lg" variant="cream" style={styles.avatar} />
+
+          <Text style={styles.nameText}>{name}</Text>
+
+          {(designation || company) && (
+            <Text style={styles.roleText}>
+              {[designation, company].filter(Boolean).join(' · ')}
             </Text>
+          )}
+
+          <View style={styles.badgesRow}>
+            {category && <Badge label={category} variant="cream" size="md" />}
+            {qualityScore !== null && (
+              <Badge
+                label={`OCR Quality ${qualityScore}%`}
+                variant={
+                  qualityScore >= 80
+                    ? 'orange'
+                    : qualityScore >= 50
+                    ? 'cream'
+                    : 'neutral'
+                }
+                size="md"
+              />
+            )}
           </View>
-          <Text style={[styles.name, { color: colors.text }]}>{name}</Text>
-          {designation && <Text style={[styles.designation, { color: colors.textSecondary }]}>{designation}</Text>}
-          {company && <Text style={[styles.company, { color: colors.textMuted }]}>{company}</Text>}
-          
-          {category && (
-            <View style={[styles.badge, { backgroundColor: colors.primaryLight, marginTop: 12 }]}>
-              <Text style={[styles.badgeText, { color: colors.primary }]}>{category}</Text>
-            </View>
-          )}
         </View>
 
-        {/* Action Call/Email Row (Trigger on primary item) */}
-        <View style={styles.actionRow}>
+        {/* Quick Action Shortcuts (Mistral Cream Tiles with 8px radius) */}
+        <View style={styles.shortcutsRow}>
           <TouchableOpacity
-            onPress={() => phones.length > 0 && handleCall(phones[0].value)}
-            disabled={phones.length === 0}
+            onPress={() => primaryPhone && handleCall(primaryPhone)}
+            disabled={!primaryPhone}
             style={[
-              styles.actionBtn,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              phones.length === 0 && styles.disabledBtn,
+              styles.shortcutTile,
+              !primaryPhone && styles.shortcutTileDisabled,
             ]}
           >
-            <IconSymbol name="phone.fill" size={20} color={phones.length > 0 ? colors.primary : colors.textMuted} />
-            <Text style={[styles.actionBtnText, { color: phones.length > 0 ? colors.text : colors.textMuted }]}>Call Primary</Text>
+            <IconSymbol
+              name="phone.fill"
+              size={18}
+              color={primaryPhone ? Palette.primary : Palette.stone}
+            />
+            <Text
+              style={[
+                styles.shortcutLabel,
+                !primaryPhone && styles.shortcutLabelDisabled,
+              ]}
+            >
+              Call
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => emails.length > 0 && handleEmail(emails[0].value)}
-            disabled={emails.length === 0}
+            onPress={() => primaryEmail && handleEmail(primaryEmail)}
+            disabled={!primaryEmail}
             style={[
-              styles.actionBtn,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              emails.length === 0 && styles.disabledBtn,
+              styles.shortcutTile,
+              !primaryEmail && styles.shortcutTileDisabled,
             ]}
           >
-            <IconSymbol name="envelope.fill" size={20} color={emails.length > 0 ? colors.primary : colors.textMuted} />
-            <Text style={[styles.actionBtnText, { color: emails.length > 0 ? colors.text : colors.textMuted }]}>Email Primary</Text>
+            <IconSymbol
+              name="envelope.fill"
+              size={18}
+              color={primaryEmail ? Palette.primary : Palette.stone}
+            />
+            <Text
+              style={[
+                styles.shortcutLabel,
+                !primaryEmail && styles.shortcutLabelDisabled,
+              ]}
+            >
+              Email
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => primaryWebsite && handleWebsite(primaryWebsite)}
+            disabled={!primaryWebsite}
+            style={[
+              styles.shortcutTile,
+              !primaryWebsite && styles.shortcutTileDisabled,
+            ]}
+          >
+            <IconSymbol
+              name="globe"
+              size={18}
+              color={primaryWebsite ? Palette.primary : Palette.stone}
+            />
+            <Text
+              style={[
+                styles.shortcutLabel,
+                !primaryWebsite && styles.shortcutLabelDisabled,
+              ]}
+            >
+              Website
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Info Cards */}
-        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>CONTACT INFORMATION</Text>
-        <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          
-          {/* Phones List */}
-          {phones.map((phone, idx) => (
-            <TouchableOpacity
-              key={`phone_${idx}`}
-              onLongPress={() => handleCopy(phone.value, `${phone.label} Phone`)}
-              style={[styles.infoRow, styles.borderBottom, { borderBottomColor: colors.border }]}
-            >
-              <View style={styles.infoIcon}>
-                <IconSymbol name="phone.fill" size={16} color={colors.textMuted} />
-              </View>
-              <View style={styles.infoTextContainer}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{phone.label} Phone</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{phone.value}</Text>
-              </View>
-              <View style={styles.actionIcons}>
-                <TouchableOpacity onPress={() => handleCall(phone.value)} style={styles.iconPadding}>
-                  <IconSymbol name="phone.fill" size={16} color={colors.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleCopy(phone.value, 'Phone number')} style={styles.iconPadding}>
-                  <IconSymbol name="doc.on.doc.fill" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
+        {/* Detailed Sections with Hairline Dividers */}
+        {/* CONTACT SECTION */}
+        {(phones.length > 0 || emails.length > 0) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>CONTACT</Text>
 
-          {/* Emails List */}
-          {emails.map((email, idx) => (
-            <TouchableOpacity
-              key={`email_${idx}`}
-              onLongPress={() => handleCopy(email.value, 'Email Address')}
-              style={[styles.infoRow, styles.borderBottom, { borderBottomColor: colors.border }]}
-            >
-              <View style={styles.infoIcon}>
-                <IconSymbol name="envelope.fill" size={16} color={colors.textMuted} />
-              </View>
-              <View style={styles.infoTextContainer}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Email ({email.type})</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{email.value}</Text>
-              </View>
-              <View style={styles.actionIcons}>
-                <TouchableOpacity onPress={() => handleEmail(email.value)} style={styles.iconPadding}>
-                  <IconSymbol name="envelope.fill" size={16} color={colors.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleCopy(email.value, 'Email address')} style={styles.iconPadding}>
-                  <IconSymbol name="doc.on.doc.fill" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
-
-          {/* Websites List */}
-          {websites.map((web, idx) => (
-            <TouchableOpacity
-              key={`web_${idx}`}
-              onLongPress={() => handleCopy(web.value, 'Website Link')}
-              style={[styles.infoRow, styles.borderBottom, { borderBottomColor: colors.border }]}
-            >
-              <View style={styles.infoIcon}>
-                <IconSymbol name="globe" size={16} color={colors.textMuted} />
-              </View>
-              <View style={styles.infoTextContainer}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Website ({web.type})</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{web.value}</Text>
-              </View>
-              <View style={styles.actionIcons}>
-                <TouchableOpacity onPress={() => handleWebsite(web.value)} style={styles.iconPadding}>
-                  <IconSymbol name="arrow.up.right.square" size={16} color={colors.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleCopy(web.value, 'Website Link')} style={styles.iconPadding}>
-                  <IconSymbol name="doc.on.doc.fill" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
-
-          {/* Address Row */}
-          {officeAddress && (
-            <TouchableOpacity
-              onLongPress={() => handleCopy(officeAddress, 'Office address')}
-              style={[styles.infoRow, { minHeight: 64 }]}
-            >
-              <View style={styles.infoIcon}>
-                <IconSymbol name="building.2.fill" size={16} color={colors.textMuted} />
-              </View>
-              <View style={styles.infoTextContainer}>
-                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Office Address</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{officeAddress}</Text>
-              </View>
-              <TouchableOpacity onPress={() => handleCopy(officeAddress, 'Office address')} style={styles.iconPadding}>
-                <IconSymbol name="doc.on.doc.fill" size={16} color={colors.textMuted} />
+            {phones.map((p, idx) => (
+              <TouchableOpacity
+                key={`phone-${idx}`}
+                style={styles.fieldRow}
+                onPress={() => handleCall(p.value)}
+                onLongPress={() => handleCopy(p.value, 'Phone number')}
+              >
+                <View style={styles.fieldInfo}>
+                  <Text style={styles.fieldLabel}>
+                    {p.label || p.type || 'Phone'}
+                  </Text>
+                  <Text style={styles.fieldValue}>{p.value}</Text>
+                </View>
+                <IconSymbol
+                  name="phone.fill"
+                  size={15}
+                  color={Palette.primary}
+                />
               </TouchableOpacity>
+            ))}
+
+            {emails.map((e, idx) => (
+              <TouchableOpacity
+                key={`email-${idx}`}
+                style={styles.fieldRow}
+                onPress={() => handleEmail(e.value)}
+                onLongPress={() => handleCopy(e.value, 'Email address')}
+              >
+                <View style={styles.fieldInfo}>
+                  <Text style={styles.fieldLabel}>Email ({e.type || 'Work'})</Text>
+                  <Text style={styles.fieldValue}>{e.value}</Text>
+                </View>
+                <IconSymbol
+                  name="envelope.fill"
+                  size={15}
+                  color={Palette.primary}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* BUSINESS SECTION */}
+        {(company || designation) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>BUSINESS</Text>
+
+            {company ? (
+              <View style={styles.fieldRow}>
+                <View style={styles.fieldInfo}>
+                  <Text style={styles.fieldLabel}>Company</Text>
+                  <Text style={styles.fieldValue}>{company}</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {designation ? (
+              <View style={styles.fieldRow}>
+                <View style={styles.fieldInfo}>
+                  <Text style={styles.fieldLabel}>Role / Designation</Text>
+                  <Text style={styles.fieldValue}>{designation}</Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* LOCATION SECTION */}
+        {officeAddress ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>LOCATION</Text>
+            <TouchableOpacity
+              style={styles.fieldRow}
+              onLongPress={() => handleCopy(officeAddress, 'Address')}
+            >
+              <View style={styles.fieldInfo}>
+                <Text style={styles.fieldLabel}>Office Address</Text>
+                <Text style={styles.fieldValue}>{officeAddress}</Text>
+              </View>
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        ) : null}
+
+        {/* ONLINE SECTION */}
+        {websites.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>ONLINE</Text>
+            {websites.map((w, idx) => (
+              <TouchableOpacity
+                key={`web-${idx}`}
+                style={styles.fieldRow}
+                onPress={() => handleWebsite(w.value)}
+                onLongPress={() => handleCopy(w.value, 'Website')}
+              >
+                <View style={styles.fieldInfo}>
+                  <Text style={styles.fieldLabel}>Website</Text>
+                  <Text style={[styles.fieldValue, { color: Palette.primary }]}>
+                    {w.value}
+                  </Text>
+                </View>
+                <IconSymbol name="globe" size={15} color={Palette.primary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Delete Contact Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleDelete}
-          style={[styles.deleteBtn, { borderColor: colors.error }]}
-        >
-          <Text style={[styles.deleteBtnText, { color: colors.error }]}>Delete Contact</Text>
-        </TouchableOpacity>
+        <View style={styles.deleteSection}>
+          <DangerButton
+            title="Delete Contact"
+            onPress={handleDelete}
+            variant="subtle"
+            icon={
+              <IconSymbol name="trash.fill" size={15} color={Palette.error} />
+            }
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+    backgroundColor: Palette.canvas,
   },
-  header: {
-    height: 56,
+  navBar: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
+    borderBottomColor: Palette.hairlineSoft,
   },
-  backBtn: {
-    paddingVertical: 8,
-    width: 60,
+  navBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  backLabel: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 14,
+    color: Palette.ink,
+    marginLeft: 4,
+    fontWeight: '500',
   },
-  editHeaderBtn: {
-    paddingVertical: 8,
-    width: 60,
-    alignItems: 'flex-end',
+  editBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  editLabel: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 14,
+    color: Palette.primary,
+    fontWeight: '600',
   },
   scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   profileSection: {
     alignItems: 'center',
-    marginVertical: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: Palette.hairlineSoft,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 16,
   },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '700',
+  nameText: {
+    fontFamily: Typography.fontFamily.serif,
+    fontSize: 26,
+    fontWeight: '400',
+    color: Palette.ink,
     textAlign: 'center',
+    letterSpacing: -0.5,
+    marginBottom: 6,
   },
-  designation: {
-    fontSize: 16,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  company: {
+  roleText: {
+    fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
-    marginTop: 2,
+    color: Palette.slate,
     textAlign: 'center',
+    marginBottom: 12,
   },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  actionRow: {
+  badgesRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginVertical: 24,
-  },
-  actionBtn: {
-    flex: 1,
-    height: 54,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
   },
-  actionBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  disabledBtn: {
-    opacity: 0.5,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  infoCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginBottom: 32,
-  },
-  infoRow: {
+  shortcutsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    minHeight: 64,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Palette.hairlineSoft,
   },
-  borderBottom: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  infoIcon: {
-    width: 32,
-  },
-  infoTextContainer: {
+  shortcutTile: {
     flex: 1,
-    marginRight: 8,
-  },
-  infoLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  deleteBtn: {
     height: 52,
-    borderRadius: 12,
+    backgroundColor: Palette.cream,
     borderWidth: 1,
+    borderColor: Palette.beigeDeep,
+    borderRadius: BorderRadius.md, // 8px radius
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteBtnText: {
-    fontSize: 16,
+  shortcutTileDisabled: {
+    backgroundColor: Palette.surface,
+    borderColor: Palette.hairline,
+  },
+  shortcutLabel: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 11,
     fontWeight: '600',
+    color: Palette.ink,
+    marginTop: 4,
   },
-  qualityBadge: {
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
+  shortcutLabelDisabled: {
+    color: Palette.stone,
   },
-  qualityText: {
-    color: '#FFFFFF',
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  sectionHeader: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 11,
     fontWeight: '700',
-    fontSize: 14,
+    color: Palette.stone,
+    letterSpacing: 1,
+    marginBottom: 12,
   },
-  actionIcons: {
+  fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Palette.hairlineSoft,
   },
-  iconPadding: {
-    padding: 8,
+  fieldInfo: {
+    flex: 1,
+  },
+  fieldLabel: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 12,
+    color: Palette.stone,
+    marginBottom: 2,
+  },
+  fieldValue: {
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 15,
+    color: Palette.ink,
+    fontWeight: '500',
+  },
+  deleteSection: {
+    paddingHorizontal: 20,
+    marginTop: 36,
   },
 });

@@ -1,0 +1,15 @@
+{
+  "name": "quickbiz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QuickBiz - Smart Business Card Scanner (College-level Mobile Application)",
+  "scripts": {
+    "dev": "npm --prefix mobile run start",
+    "dev:mobile": "npm --prefix mobile run start",
+    "dev:server": "npm --prefix server run dev",
+    "build:server": "npm --prefix server run build",
+    "android": "npm --prefix mobile run android",
+    "test:mobile": "npm --prefix mobile test",
+    "lint:mobile": "npm --prefix mobile run lint"
+  }
+}

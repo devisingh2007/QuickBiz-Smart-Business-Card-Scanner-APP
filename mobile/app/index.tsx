@@ -2,22 +2,20 @@ import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Palette, Typography } from '@/constants/theme';
+import { SunsetStripe } from '@/components/ui/SunsetStripe';
 import { apiService } from '@/services/api.service';
 
 export default function Index() {
   const router = useRouter();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
 
   useEffect(() => {
     const checkNavigationFlow = async () => {
       try {
         const onboarded = await AsyncStorage.getItem('@quickbiz_onboarded');
-        
-        // Wait for splash screen display duration (1.5 seconds)
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        // Allow splash screen display duration (1.2 seconds)
+        await new Promise((resolve) => setTimeout(resolve, 1200));
 
         if (onboarded !== 'true') {
           router.replace('/onboarding');
@@ -38,14 +36,21 @@ export default function Index() {
   }, [router]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.logo, { color: colors.primary }]}>QuickBiz</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Smart Business Contacts</Text>
-      
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading...</Text>
+    <View style={styles.container}>
+      <View style={styles.centerContent}>
+        <View style={styles.brandRow}>
+          <Text style={styles.logo}>QuickBiz</Text>
+          <View style={styles.orangeDot} />
+        </View>
+        <Text style={styles.subtitle}>Smart Business Contacts</Text>
+
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="small" color={Palette.primary} />
+          <Text style={styles.loadingText}>Initializing...</Text>
+        </View>
       </View>
+
+      <SunsetStripe height={4} />
     </View>
   );
 }
@@ -53,27 +58,49 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Palette.canvas,
+    justifyContent: 'space-between',
+  },
+  centerContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   logo: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontFamily: Typography.fontFamily.serif,
+    fontSize: 38,
+    fontWeight: '700',
+    color: Palette.ink,
+    letterSpacing: -0.8,
+  },
+  orangeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Palette.primary,
+    marginLeft: 4,
+    marginTop: 6,
   },
   subtitle: {
-    fontSize: 16,
-    marginTop: 8,
-    fontWeight: '500',
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 14,
+    color: Palette.slate,
+    marginTop: 6,
+    letterSpacing: 0.1,
   },
   loaderContainer: {
-    position: 'absolute',
-    bottom: 60,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    marginTop: 36,
   },
   loadingText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontFamily: Typography.fontFamily.sans,
+    fontSize: 13,
+    color: Palette.stone,
+    marginLeft: 8,
   },
 });

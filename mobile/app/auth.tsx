@@ -1,12 +1,26 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Palette } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { SunsetStripe } from '@/components/ui/SunsetStripe';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { apiService } from '@/services/api.service';
 import { contactStore } from '@/services/contact.store';
+
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -23,19 +37,19 @@ export default function AuthScreen() {
   const validate = () => {
     const tempErrors: { [key: string]: string } = {};
     if (!email) {
-      tempErrors.email = 'Email is required';
+      tempErrors.email = 'Email address is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      tempErrors.email = 'Invalid email address';
-    }
-    
-    if (!password) {
-      tempErrors.password = 'Password is required';
-    } else if (password.length < 8) {
-      tempErrors.password = 'Password must be at least 8 characters';
+      tempErrors.email = 'Please enter a valid email address';
     }
 
-    if (!isLogin && !name) {
-      tempErrors.name = 'Name is required';
+    if (!password) {
+      tempErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      tempErrors.password = 'Password must be at least 6 characters';
+    }
+
+    if (!isLogin && !name.trim()) {
+      tempErrors.name = 'Full name is required';
     }
 
     setErrors(tempErrors);
@@ -72,77 +86,165 @@ export default function AuthScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Logo and Greeting */}
-        <View style={styles.header}>
-          <Text style={[styles.logo, { color: colors.primary }]}>QuickBiz</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {isLogin ? 'Sign in to sync your professional network' : 'Create an account to backup scanned cards'}
-          </Text>
-        </View>
-
-        {/* Form Container */}
-        <View style={styles.form}>
-          {!isLogin && (
-            <InputField
-              label="Full Name"
-              placeholder="e.g. John Doe"
-              value={name}
-              onChangeText={setName}
-              error={errors.name}
-              autoCapitalize="words"
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Brand Header */}
+          <View style={styles.brandHeader}>
+            <Image
+              source={require('@/assets/images/icon.png')}
+              style={styles.brandBadge}
+              resizeMode="contain"
             />
-          )}
 
-          <InputField
-            label="Email Address"
-            placeholder="e.g. john@company.com"
-            value={email}
-            onChangeText={setEmail}
-            error={errors.email}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            <Text style={[styles.editorialTitle, { color: colors.textPrimary }]}>
+              {isLogin ? 'Sign in to QuickBiz' : 'Create your account'}
+            </Text>
 
-          <InputField
-            label="Password"
-            placeholder="Min. 6 characters"
-            value={password}
-            onChangeText={setPassword}
-            error={errors.password}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            <Text style={[styles.editorialSubtitle, { color: colors.textSecondary }]}>
+              {isLogin
+                ? 'Access your digitized contacts and synchronization services.'
+                : 'Safely backup and organize your scanned business cards.'}
+            </Text>
+          </View>
 
-          <PrimaryButton
-            title={isLogin ? 'Sign In' : 'Sign Up'}
-            onPress={handleSubmit}
-            loading={loading}
-            style={styles.submitBtn}
-          />
-        </View>
+          {/* Form Panel (Cream surface with 12px radius & beige border) */}
+          <View
+            style={[
+              styles.formPanel,
+              {
+                backgroundColor: colors.surfaceCream,
+                borderColor: colors.borderBeige,
+              },
+            ]}
+          >
+            {/* Segmented Switch */}
+            <View style={[styles.segmentContainer, { backgroundColor: colors.surface, borderColor: colors.borderBeige }]}>
+              <TouchableOpacity
+                style={[
+                  styles.segmentBtn,
+                  isLogin && { backgroundColor: Palette.ink },
+                ]}
+                onPress={() => {
+                  setIsLogin(true);
+                  setErrors({});
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Sign In tab"
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    { color: isLogin ? '#FFFFFF' : colors.textMuted },
+                    isLogin && { fontWeight: '600' },
+                  ]}
+                >
+                  Sign In
+                </Text>
+              </TouchableOpacity>
 
-        {/* Tab switcher */}
-        <View style={styles.footer}>
-          <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={styles.toggleBtn}>
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <Text style={{ color: colors.primary, fontWeight: '700' }}>
-                {isLogin ? 'Sign Up' : 'Sign In'}
+              <TouchableOpacity
+                style={[
+                  styles.segmentBtn,
+                  !isLogin && { backgroundColor: Palette.ink },
+                ]}
+                onPress={() => {
+                  setIsLogin(false);
+                  setErrors({});
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Create Account tab"
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    { color: !isLogin ? '#FFFFFF' : colors.textMuted },
+                    !isLogin && { fontWeight: '600' },
+                  ]}
+                >
+                  Create Account
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {!isLogin && (
+              <InputField
+                label="Full Name"
+                placeholder="e.g. Sarah Connor"
+                value={name}
+                onChangeText={setName}
+                error={errors.name}
+                autoCapitalize="words"
+                leftIcon={
+                  <IconSymbol name="person.2.fill" size={16} color={colors.textMuted} />
+                }
+              />
+            )}
+
+            <InputField
+              label="Email Address"
+              placeholder="e.g. name@company.com"
+              value={email}
+              onChangeText={setEmail}
+              error={errors.email}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              leftIcon={
+                <IconSymbol name="envelope.fill" size={16} color={colors.textMuted} />
+              }
+            />
+
+            <InputField
+              label="Password"
+              placeholder="Minimum 6 characters"
+              value={password}
+              onChangeText={setPassword}
+              error={errors.password}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              leftIcon={
+                <IconSymbol name="lock.fill" size={16} color={colors.textMuted} />
+              }
+            />
+
+            <PrimaryButton
+              title={isLogin ? 'Sign In' : 'Create Account'}
+              onPress={handleSubmit}
+              loading={loading}
+              style={styles.submitBtn}
+            />
+          </View>
+
+          {/* Offline Option */}
+          <View style={styles.footer}>
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.orText, { color: colors.textMuted }]}>OR</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            </View>
+
+            <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} accessibilityRole="button">
+              <Text style={[styles.skipText, { color: Palette.primary }]}>
+                Continue in Offline Mode
               </Text>
-            </Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
-            <Text style={[styles.skipText, { color: colors.textMuted }]}>
-              Skip & Use Offline Mode
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          {/* Sunset Stripe */}
+          <View style={styles.closingStripe}>
+            <SunsetStripe height={4} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -152,48 +254,87 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
     justifyContent: 'center',
     flexGrow: 1,
   },
-  header: {
+  brandHeader: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: Spacing.xl,
   },
-  logo: {
-    fontSize: 38,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  brandBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
   },
-  subtitle: {
-    fontSize: 15,
+  editorialTitle: {
+    ...Typography.heading1,
+    fontSize: 26,
     textAlign: 'center',
-    marginTop: 10,
-    lineHeight: 22,
-    paddingHorizontal: 20,
+    marginBottom: 4,
   },
-  form: {
-    marginBottom: 24,
+  editorialSubtitle: {
+    ...Typography.bodySm,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.md,
+    lineHeight: 19,
+  },
+  formPanel: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: Spacing.xl,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BorderRadius.sm,
+  },
+  segmentText: {
+    ...Typography.bodySm,
+    fontSize: 13,
   },
   submitBtn: {
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
   footer: {
     alignItems: 'center',
-    gap: 16,
+    gap: Spacing.md,
+    marginBottom: Spacing.xl,
   },
-  toggleBtn: {
-    padding: 8,
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '85%',
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  orText: {
+    ...Typography.caption,
+    marginHorizontal: Spacing.md,
   },
   skipBtn: {
-    padding: 8,
-    marginTop: 8,
+    paddingVertical: Spacing.xs,
   },
   skipText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...Typography.bodySmMedium,
     textDecorationLine: 'underline',
+  },
+  closingStripe: {
+    alignItems: 'center',
   },
 });

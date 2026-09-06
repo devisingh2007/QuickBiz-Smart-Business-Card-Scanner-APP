@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { BorderRadius, Typography, Palette } from '@/constants/theme';
 
-export interface PrimaryButtonProps {
+export interface DarkButtonProps {
   title: string;
   onPress: () => void;
   loading?: boolean;
@@ -20,10 +20,10 @@ export interface PrimaryButtonProps {
 }
 
 /**
- * Mistral AI Primary Button
- * Saturated Orange #FA520F background, 8px radius, white text, pressed state #CC3A05.
+ * Mistral AI Dark Button
+ * Pure Ink #1F1F1F surface, 8px radius, white text, pressed state #3D3D3D.
  */
-export function PrimaryButton({
+export function DarkButton({
   title,
   onPress,
   loading = false,
@@ -31,7 +31,7 @@ export function PrimaryButton({
   style,
   textStyle,
   icon,
-}: PrimaryButtonProps) {
+}: DarkButtonProps) {
   const [isPressed, setIsPressed] = useState(false);
 
   return (
@@ -67,21 +67,21 @@ const styles = StyleSheet.create({
     height: 48,
     minHeight: 44,
     borderRadius: BorderRadius.md, // Exact 8px per Mistral design system
-    backgroundColor: Palette.primary,
+    backgroundColor: Palette.ink,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
   buttonPressed: {
-    backgroundColor: Palette.primaryDeep, // #CC3A05
+    backgroundColor: Palette.inkTint, // #3D3D3D
   },
   buttonDisabled: {
     backgroundColor: Palette.stone,
     opacity: 0.6,
   },
   text: {
-    color: Palette.onPrimary,
+    color: '#FFFFFF',
     fontFamily: Typography.fontFamily.sans,
     fontSize: 14,
     fontWeight: '500',
