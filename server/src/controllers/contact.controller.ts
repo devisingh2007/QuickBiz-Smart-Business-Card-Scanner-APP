@@ -1,8 +1,10 @@
-import { Request, Response } from 'express';
+
+import { Response } from 'express';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { ContactService } from '../services/contact.service';
 
 // Create a new contact
-export const createContact = async (req: Request, res: Response): Promise<void> => {
+export const createContact = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
     if (!userId) {
@@ -35,8 +37,8 @@ export const createContact = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// Get all contacts with category filter, search query, and pagination
-export const getContacts = async (req: Request, res: Response): Promise<void> => {
+// Get all contacts with category filter and search queries
+export const getContacts = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
     if (!userId) {
@@ -59,16 +61,15 @@ export const getContacts = async (req: Request, res: Response): Promise<void> =>
       contacts: result.contacts,
     });
   } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
+    res.status(500).json({
       success: false,
       message: error.message || 'Internal Server Error',
     });
   }
 };
 
-// Get a single contact by ID
-export const getContactById = async (req: Request, res: Response): Promise<void> => {
+// Get a single contact
+export const getContactById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
     if (!userId) {
@@ -93,7 +94,7 @@ export const getContactById = async (req: Request, res: Response): Promise<void>
 };
 
 // Update a contact
-export const updateContact = async (req: Request, res: Response): Promise<void> => {
+export const updateContact = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
     if (!userId) {
@@ -110,15 +111,6 @@ export const updateContact = async (req: Request, res: Response): Promise<void> 
       contact,
     });
   } catch (error: any) {
-    if (error.duplicate) {
-      res.status(409).json({
-        success: false,
-        duplicate: true,
-        message: error.message,
-        existingContact: error.existingContact,
-      });
-      return;
-    }
     const statusCode = error.statusCode || 500;
     res.status(statusCode).json({
       success: false,
@@ -128,7 +120,7 @@ export const updateContact = async (req: Request, res: Response): Promise<void> 
 };
 
 // Delete a contact
-export const deleteContact = async (req: Request, res: Response): Promise<void> => {
+export const deleteContact = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
     if (!userId) {

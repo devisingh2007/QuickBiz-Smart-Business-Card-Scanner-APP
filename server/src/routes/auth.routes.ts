@@ -1,3 +1,4 @@
+
 import { Router } from 'express';
 import { register, login, deleteAccount } from '../controllers/auth.controller';
 import { validateRegister, validateLogin } from '../middleware/validation.middleware';
@@ -7,6 +8,6 @@ const router = Router();
 
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
-router.delete('/account', authMiddleware, deleteAccount);
+router.delete('/account', authMiddleware as any, deleteAccount as any);
 
 export default router;

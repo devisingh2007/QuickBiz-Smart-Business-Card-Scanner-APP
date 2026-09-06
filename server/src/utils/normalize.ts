@@ -1,3 +1,4 @@
+
 export const normalizePhone = (phone: string): string => {
   // Trim and remove spaces, parentheses, hyphens, and dots. Preserve leading +
   return phone.trim().replace(/[\s\-\(\)\.]/g, '');

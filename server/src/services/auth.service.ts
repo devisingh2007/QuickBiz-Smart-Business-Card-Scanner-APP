@@ -1,19 +1,16 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
 import { User } from '../models/user.model';
 import { Contact } from '../models/contact.model';
 
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
 export class AuthService {
   public static async register(name: string, email: string, password: string) {
-    const cleanEmail = email.trim().toLowerCase();
-
     // Check if user already exists
-    const existingUser = await User.findOne({ email: cleanEmail });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      const err: any = new Error('User with this email already exists');
-      err.statusCode = 400;
-      throw err;
+      throw new Error('User with this email already exists');
     }
 
     // Hash password
@@ -22,8 +19,8 @@ export class AuthService {
 
     // Create user
     const user = await User.create({
-      name: name.trim(),
-      email: cleanEmail,
+      name,
+      email,
       password: hashedPassword,
     });
 
@@ -41,22 +38,16 @@ export class AuthService {
   }
 
   public static async login(email: string, password: string) {
-    const cleanEmail = email.trim().toLowerCase();
-
     // Find user
-    const user = await User.findOne({ email: cleanEmail });
+    const user = await User.findOne({ email });
     if (!user) {
-      const err: any = new Error('Invalid email or password');
-      err.statusCode = 401;
-      throw err;
+      throw new Error('Invalid email or password');
     }
 
     // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      const err: any = new Error('Invalid email or password');
-      err.statusCode = 401;
-      throw err;
+      throw new Error('Invalid email or password');
     }
 
     // Generate JWT
@@ -73,29 +64,17 @@ export class AuthService {
   }
 
   public static generateToken(userId: string): string {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error('FATAL: JWT_SECRET environment variable is missing.');
-    }
-    return jwt.sign({ userId }, secret, { expiresIn: '30d' });
+    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' });
   }
 
   public static async deleteAccount(userId: string): Promise<void> {
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-      const err: any = new Error('Invalid user ID format.');
-      err.statusCode = 400;
-      throw err;
-    }
-
     // 1. Delete all contacts belonging to the user
     await Contact.deleteMany({ userId });
 
     // 2. Delete the user
     const result = await User.findByIdAndDelete(userId);
     if (!result) {
-      const err: any = new Error('User not found');
-      err.statusCode = 404;
-      throw err;
+      throw new Error('User not found');
     }
   }
 }

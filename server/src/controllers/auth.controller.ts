@@ -1,12 +1,14 @@
+
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      res.status(400).json({ success: false, message: 'Please provide name, email, and password.' });
+      res.status(400).json({ success: false, message: 'Please provide name, email and password' });
       return;
     }
 
@@ -18,8 +20,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       ...result,
     });
   } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
+    const isDuplicate = error.message.includes('already exists');
+    res.status(isDuplicate ? 400 : 500).json({
       success: false,
       message: error.message || 'Internal Server Error',
     });
@@ -31,7 +33,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      res.status(400).json({ success: false, message: 'Please provide email and password.' });
+      res.status(400).json({ success: false, message: 'Please provide email and password' });
       return;
     }
 
@@ -43,15 +45,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       ...result,
     });
   } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
+    const isInvalid = error.message.includes('Invalid');
+    res.status(isInvalid ? 401 : 500).json({
       success: false,
       message: error.message || 'Internal Server Error',
     });
   }
 };
 
-export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
+export const deleteAccount = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
     if (!userId) {
@@ -66,8 +68,7 @@ export const deleteAccount = async (req: Request, res: Response): Promise<void> 
       message: 'Account and all associated contacts deleted successfully.',
     });
   } catch (error: any) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({
+    res.status(500).json({
       success: false,
       message: error.message || 'Internal Server Error',
     });

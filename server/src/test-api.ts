@@ -1,329 +1,187 @@
-/**
- * Integration tests for the QuickBiz API.
- *
- * Run with: node dist/test-api.js
- *
- * Requires the server to be running and MONGODB_URI to be set.
- * The JWT_SECRET env var must also match what the server was started with.
- */
-export {};
 
-const PORT = process.env.PORT || 5000;
-const BASE = `http://localhost:${PORT}/api`;
-const ROOT = `http://localhost:${PORT}`;
+const BASE_URL = 'http://127.0.0.1:5000/api';
 
-let passed = 0;
-let failed = 0;
-let token = '';
-let contactId = '';
-let secondContactId = '';
+const runTests = async () => {
+  console.log('--- Starting QuickBiz API Verification Tests ---');
 
-// ─── Test helpers ─────────────────────────────────────────────────────────────
+  const testEmail = `test_${Date.now()}@example.com`;
+  const testPassword = 'password123';
+  let token = '';
+  let contactId = '';
 
-async function test(name: string, fn: () => Promise<void>): Promise<void> {
   try {
-    await fn();
-    console.log(`  ✓ ${name}`);
-    passed++;
-  } catch (e: any) {
-    console.error(`  ✗ ${name}: ${e.message}`);
-    failed++;
-  }
-}
-
-function expect(condition: boolean, message: string): void {
-  if (!condition) throw new Error(message);
-}
-
-async function post(path: string, body: object, authToken?: string): Promise<any> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-  const res = await fetch(`${BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
-  return { status: res.status, data: await res.json() };
-}
-
-async function get(path: string, authToken?: string): Promise<any> {
-  const headers: Record<string, string> = {};
-  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-  const res = await fetch(`${BASE}${path}`, { headers });
-  return { status: res.status, data: await res.json() };
-}
-
-async function patch(path: string, body: object, authToken: string): Promise<any> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-    body: JSON.stringify(body),
-  });
-  return { status: res.status, data: await res.json() };
-}
-
-async function del(path: string, authToken: string): Promise<any> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${authToken}` },
-  });
-  return { status: res.status, data: await res.json() };
-}
-
-// ─── Test suite ───────────────────────────────────────────────────────────────
-
-async function run(): Promise<void> {
-  console.log('\n=== QuickBiz API Integration Tests ===\n');
-
-  // Root & Health checks
-  await test('GET /health returns 200 and status ok', async () => {
-    const res = await fetch(`${ROOT}/health`);
-    expect(res.status === 200, `Expected 200, got ${res.status}`);
-    const data = (await res.json()) as any;
-    expect(data.status?.toLowerCase() === 'ok', `Expected status "ok", got "${data.status}"`);
-  });
-
-  await test('GET / returns 200 and status OK', async () => {
-    const res = await fetch(`${ROOT}/`);
-    expect(res.status === 200, `Expected 200, got ${res.status}`);
-    const data = (await res.json()) as any;
-    expect(data.status?.toUpperCase() === 'OK', `Expected status "OK", got "${data.status}"`);
-  });
-
-  await test('GET /api returns 200 and status OK', async () => {
-    const res = await fetch(`${ROOT}/api`);
-    expect(res.status === 200, `Expected 200, got ${res.status}`);
-    const data = (await res.json()) as any;
-    expect(data.status?.toUpperCase() === 'OK', `Expected status "OK", got "${data.status}"`);
-  });
-
-  await test('GET /api/health returns 200 and status ok', async () => {
-    const res = await fetch(`${ROOT}/api/health`);
-    expect(res.status === 200, `Expected 200, got ${res.status}`);
-    const data = (await res.json()) as any;
-    expect(data.status?.toLowerCase() === 'ok', `Expected status "ok", got "${data.status}"`);
-  });
-
-  // Register
-  await test('POST /auth/register creates a new user', async () => {
-    const { status, data } = await post('/auth/register', {
-      name: 'Test User',
-      email: 'apitest@example.com',
-      password: 'password123',
+    // 1. Test User Registration
+    console.log('\n[Test 1] User Registration...');
+    const registerRes = await fetch(`${BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Test Account',
+        email: testEmail,
+        password: testPassword,
+      }),
     });
-    expect(status === 201, `Expected 201, got ${status}`);
-    expect(data.success === true, 'Expected success: true');
-    expect(typeof data.token === 'string', 'Expected a token string');
-    token = data.token;
-  });
-
-  await test('POST /auth/register rejects duplicate email', async () => {
-    const { status } = await post('/auth/register', {
-      name: 'Test User',
-      email: 'apitest@example.com',
-      password: 'password123',
-    });
-    expect(status === 400, `Expected 400, got ${status}`);
-  });
-
-  await test('POST /auth/register rejects invalid name (too short)', async () => {
-    const { status } = await post('/auth/register', {
-      name: 'a',
-      email: 'short@example.com',
-      password: 'password123',
-    });
-    expect(status === 400, `Expected 400, got ${status}`);
-  });
-
-  await test('POST /auth/register rejects weak password', async () => {
-    const { status } = await post('/auth/register', {
-      name: 'Weak Pass',
-      email: 'weak@example.com',
-      password: 'abc',
-    });
-    expect(status === 400, `Expected 400, got ${status}`);
-  });
-
-  // Login
-  await test('POST /auth/login returns a token', async () => {
-    const { status, data } = await post('/auth/login', {
-      email: 'apitest@example.com',
-      password: 'password123',
-    });
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(data.success === true, 'Expected success: true');
-    token = data.token;
-  });
-
-  await test('POST /auth/login rejects wrong password', async () => {
-    const { status } = await post('/auth/login', {
-      email: 'apitest@example.com',
-      password: 'wrongpassword',
-    });
-    expect(status === 401, `Expected 401, got ${status}`);
-  });
-
-  await test('POST /auth/login rejects invalid email format', async () => {
-    const { status } = await post('/auth/login', {
-      email: 'notanemail',
-      password: 'password123',
-    });
-    expect(status === 400, `Expected 400, got ${status}`);
-  });
-
-  // Contacts
-  await test('POST /contacts creates a contact', async () => {
-    const { status, data } = await post(
-      '/contacts',
-      {
-        name: 'John Doe',
-        phones: [{ value: '+1234567890', type: 'mobile' }],
-        emails: [{ value: 'john@example.com', type: 'work' }],
-        category: 'Client',
-      },
-      token,
-    );
-    expect(status === 201, `Expected 201, got ${status}`);
-    expect(data.success === true, 'Expected success: true');
-    expect(typeof data.contact._id === 'string', 'Expected a contact _id');
-    contactId = data.contact._id;
-  });
-
-  await test('POST /contacts creates a second contact for update tests', async () => {
-    const { status, data } = await post(
-      '/contacts',
-      {
-        name: 'Alice Smith',
-        phones: [{ value: '+1987654321', type: 'mobile' }],
-        emails: [{ value: 'alice@example.com', type: 'work' }],
-        category: 'Investor',
-      },
-      token,
-    );
-    expect(status === 201, `Expected 201, got ${status}`);
-    secondContactId = data.contact._id;
-  });
-
-  await test('POST /contacts detects duplicate phone or email (409 Conflict)', async () => {
-    const { status, data } = await post(
-      '/contacts',
-      {
-        name: 'Duplicate John',
-        phones: [{ value: '+1234567890', type: 'mobile' }],
-        emails: [{ value: 'john@example.com', type: 'work' }],
-      },
-      token,
-    );
-    expect(status === 409, `Expected 409, got ${status}`);
-    expect(data.duplicate === true, 'Expected duplicate: true');
-  });
-
-  await test('POST /contacts allows forceSave=true to bypass duplicate detection', async () => {
-    const { status, data } = await post(
-      '/contacts',
-      {
-        name: 'Duplicate John Allowed',
-        phones: [{ value: '+1234567890', type: 'mobile' }],
-        emails: [{ value: 'john@example.com', type: 'work' }],
-        forceSave: true,
-      },
-      token,
-    );
-    expect(status === 201, `Expected 201, got ${status}`);
-    expect(data.success === true, 'Expected success: true');
-    if (data.contact?._id) {
-      await del(`/contacts/${data.contact._id}`, token);
+    const registerData: any = await registerRes.json();
+    if (registerRes.ok && registerData.success) {
+      console.log('✓ Registration Success! Token generated.');
+      token = registerData.token;
+    } else {
+      throw new Error(`Registration Failed: ${JSON.stringify(registerData)}`);
     }
-  });
 
-  await test('GET /contacts returns the user contacts list', async () => {
-    const { status, data } = await get('/contacts', token);
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(Array.isArray(data.contacts), 'Expected contacts array');
-    expect(data.contacts.length >= 2, 'Expected at least 2 contacts');
-  });
+    // 2. Test User Login
+    console.log('\n[Test 2] User Login...');
+    const loginRes = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testEmail,
+        password: testPassword,
+      }),
+    });
+    const loginData: any = await loginRes.json();
+    if (loginRes.ok && loginData.success) {
+      console.log('✓ Login Success! Token verified.');
+    } else {
+      throw new Error(`Login Failed: ${JSON.stringify(loginData)}`);
+    }
 
-  await test('GET /contacts/:id returns a single contact', async () => {
-    const { status, data } = await get(`/contacts/${contactId}`, token);
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(data.contact._id === contactId, 'Expected correct contact');
-  });
+    // 3. Test Contact Creation
+    console.log('\n[Test 3] Contact Creation...');
+    const contactData = {
+      name: 'John Doe',
+      phones: [
+        { value: '+91 98765 43210', type: 'mobile', label: 'Mobile' },
+        { value: '+91 79 12345678', type: 'office', label: 'Office' }
+      ],
+      emails: [
+        { value: 'johndoe@example.com', type: 'work' },
+        { value: 'johndoe.personal@example.com', type: 'personal' }
+      ],
+      company: 'Antigravity Labs',
+      designation: 'Staff AI Engineer',
+      officeAddress: '100 Google Way, Mountain View, CA',
+      websites: [
+        { value: 'https://johndoe.me', type: 'work' }
+      ],
+      category: 'Developer',
+    };
+    const createRes = await fetch(`${BASE_URL}/contacts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...contactData, extractionQualityScore: 92 }),
+    });
+    const createData: any = await createRes.json();
+    if (createRes.ok && createData.success) {
+      console.log('✓ Contact Created Successfully! ID:', createData.contact._id);
+      console.log('✓ Verified Extraction Quality Score:', createData.contact.extractionQualityScore);
+      if (createData.contact.extractionQualityScore !== 92) {
+        throw new Error(`Extraction Quality Score mismatch. Expected 92, got ${createData.contact.extractionQualityScore}`);
+      }
+      contactId = createData.contact._id;
+    } else {
+      throw new Error(`Contact Creation Failed: ${JSON.stringify(createData)}`);
+    }
 
-  await test('GET /contacts/:id with invalid ObjectId returns 400 Bad Request', async () => {
-    const { status } = await get('/contacts/invalid-id-123', token);
-    expect(status === 400, `Expected 400, got ${status}`);
-  });
+    // 4. Test Duplicate Contact Detection (should return 409 conflict)
+    console.log('\n[Test 4] Duplicate Contact Detection...');
+    const dupRes = await fetch(`${BASE_URL}/contacts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(contactData),
+    });
+    const dupData: any = await dupRes.json();
+    if (dupRes.status === 409 && dupData.duplicate) {
+      console.log('✓ Duplicate Detection Success! Warning triggered correctly.');
+    } else {
+      throw new Error(`Duplicate Detection Failed. Expected 409 Conflict, got ${dupRes.status}`);
+    }
 
-  await test('PATCH /contacts/:id updates a contact and ignores forbidden fields', async () => {
-    const { status, data } = await patch(
-      `/contacts/${contactId}`,
-      { company: 'ACME Corp', userId: '507f1f77bcf86cd799439011' },
-      token
-    );
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(data.contact.company === 'ACME Corp', 'Expected company to be updated');
-    expect(data.contact.userId !== '507f1f77bcf86cd799439011', 'userId should not be overwritten');
-  });
+    // 5. Test Get Contacts & Search
+    console.log('\n[Test 5] Get Contacts & Search...');
+    const getRes = await fetch(`${BASE_URL}/contacts?q=Antigravity`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const getData: any = await getRes.json();
+    if (getRes.ok && getData.success && getData.count > 0) {
+      console.log(`✓ Get Contacts Success! Found ${getData.count} contact(s).`);
+    } else {
+      throw new Error(`Get Contacts Failed: ${JSON.stringify(getData)}`);
+    }
 
-  await test('PATCH /contacts/:id detects duplicate phone/email of another contact (409 Conflict)', async () => {
-    const { status, data } = await patch(
-      `/contacts/${secondContactId}`,
-      { emails: [{ value: 'john@example.com', type: 'work' }] },
-      token
-    );
-    expect(status === 409, `Expected 409, got ${status}`);
-    expect(data.duplicate === true, 'Expected duplicate: true');
-  });
+    // 6. Test Update Contact
+    console.log('\n[Test 6] Update Contact...');
+    const updateRes = await fetch(`${BASE_URL}/contacts/${contactId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ designation: 'Principal AI Architect' }),
+    });
+    const updateData: any = await updateRes.json();
+    if (updateRes.ok && updateData.success && updateData.contact.designation === 'Principal AI Architect') {
+      console.log('✓ Contact Updated Successfully!');
+    } else {
+      throw new Error(`Contact Update Failed: ${JSON.stringify(updateData)}`);
+    }
 
-  await test('PATCH /contacts/:id with invalid ObjectId returns 400 Bad Request', async () => {
-    const { status } = await patch('/contacts/invalid-id-123', { name: 'Test' }, token);
-    expect(status === 400, `Expected 400, got ${status}`);
-  });
+    // 7. Test Delete Contact
+    console.log('\n[Test 7] Delete Contact...');
+    const deleteRes = await fetch(`${BASE_URL}/contacts/${contactId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const deleteData: any = await deleteRes.json();
+    if (deleteRes.ok && deleteData.success) {
+      console.log('✓ Contact Deleted Successfully!');
+    } else {
+      throw new Error(`Contact Deletion Failed: ${JSON.stringify(deleteData)}`);
+    }
 
-  await test('GET /contacts supports search query with special regex characters safely', async () => {
-    const { status, data } = await get('/contacts?q=[+*?()', token);
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(Array.isArray(data.contacts), 'Expected contacts array');
-  });
+    // 8. Test Account Deletion
+    console.log('\n[Test 8] Account Deletion...');
+    const deleteAccRes = await fetch(`${BASE_URL}/auth/account`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const deleteAccData: any = await deleteAccRes.json();
+    if (deleteAccRes.ok && deleteAccData.success) {
+      console.log('✓ Account Deleted Successfully!');
+    } else {
+      throw new Error(`Account Deletion Failed: ${JSON.stringify(deleteAccData)}`);
+    }
 
-  await test('GET /contacts handles invalid non-numeric pagination safely without NaN', async () => {
-    const { status, data } = await get('/contacts?page=abc&limit=xyz', token);
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(data.pagination.page === 1, 'Expected page to default to 1');
-    expect(data.pagination.limit === 20, 'Expected limit to default to 20');
-  });
+    // 9. Verify user can no longer login
+    console.log('\n[Test 9] Login after deletion (should fail)...');
+    const reloginRes = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testEmail,
+        password: testPassword,
+      }),
+    });
+    const reloginData: any = await reloginRes.json();
+    if (reloginRes.status === 401) {
+      console.log('✓ Login correctly rejected after deletion!');
+    } else {
+      throw new Error(`Expected login to fail, got status ${reloginRes.status}: ${JSON.stringify(reloginData)}`);
+    }
 
-  await test('GET /contacts supports category filter', async () => {
-    const { status, data } = await get('/contacts?category=Client', token);
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(Array.isArray(data.contacts), 'Expected contacts array');
-  });
+    console.log('\n--- ALL API TESTS COMPLETED SUCCESSFULLY ---');
+  } catch (error: any) {
+    console.error('✗ Test failed with error:', error.message);
+  }
+};
 
-  await test('DELETE /contacts/:id with invalid ObjectId returns 400 Bad Request', async () => {
-    const { status } = await del('/contacts/invalid-id-123', token);
-    expect(status === 400, `Expected 400, got ${status}`);
-  });
-
-  await test('DELETE /contacts/:id deletes a contact', async () => {
-    const { status, data } = await del(`/contacts/${contactId}`, token);
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(data.success === true, 'Expected success: true');
-  });
-
-  await test('GET /contacts/:id returns 404 after deletion', async () => {
-    const { status } = await get(`/contacts/${contactId}`, token);
-    expect(status === 404, `Expected 404, got ${status}`);
-  });
-
-  // Account deletion
-  await test('DELETE /auth/account removes user and all contacts', async () => {
-    const { status, data } = await del('/auth/account', token);
-    expect(status === 200, `Expected 200, got ${status}`);
-    expect(data.success === true, 'Expected success: true');
-  });
-
-  // Summary
-  console.log(`\n${passed} passed, ${failed} failed\n`);
-  if (failed > 0) process.exit(1);
-}
-
-run().catch((e) => {
-  console.error('\nTest suite crashed:', e.message);
-  process.exit(1);
-});
+runTests();

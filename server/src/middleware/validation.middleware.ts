@@ -1,3 +1,4 @@
+
 import { Request, Response, NextFunction } from 'express';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
