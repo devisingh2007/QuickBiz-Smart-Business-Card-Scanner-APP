@@ -1,12 +1,6 @@
 
 import { Router } from 'express';
-import {
-  createContact,
-  getContacts,
-  getContactById,
-  updateContact,
-  deleteContact,
-} from '../controllers/contact.controller';
+import { createContact, getContacts, getContactById, updateContact, deleteContact, } from '../controllers/contact.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { validateSearchParams, validateContactPayload } from '../middleware/validation.middleware';
 

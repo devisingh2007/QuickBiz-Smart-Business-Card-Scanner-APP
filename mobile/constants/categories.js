@@ -1,0 +1,1 @@
+export const CATEGORIES = ['Client', 'Recruiter', 'Investor', 'Developer', 'Business Partner', 'Customer', 'Friend', 'Other'];
