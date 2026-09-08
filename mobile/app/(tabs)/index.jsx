@@ -1,14 +1,14 @@
-import React, { useState, useCallback, } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, StatusBar, } from 'react-native';
-import { SafeAreaView, } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect, } from 'expo-router';
-import { Typography, BorderRadius, Palette, } from '@/constants/theme';
-import { useTheme, } from '@/hooks/use-theme';
 import { ContactRow, } from '@/components/ui/ContactRow';
 import { SunsetStripe, } from '@/components/ui/SunsetStripe';
 import { IconSymbol, } from '@/components/ui/icon-symbol';
+import { BorderRadius, Palette, Typography, } from '@/constants/theme';
+import { useTheme, } from '@/hooks/use-theme';
 import { apiService, } from '@/services/api.service';
 import { contactStore, } from '@/services/contact.store';
+import { useFocusEffect, useRouter, } from 'expo-router';
+import React, { useCallback, useState, } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, } from 'react-native';
+import { SafeAreaView, } from 'react-native-safe-area-context';
 export default function HomeScreen() {
   const router = useRouter();
   const {
@@ -48,155 +48,155 @@ export default function HomeScreen() {
   return <SafeAreaView style={[styles.safeArea, {
     backgroundColor: colors.background
   }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.surface} />
+    <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.surface} />
 
-      {/* 1. Top Header */}
-      <View style={[styles.header, {
+    {/* 1. Top Header */}
+    <View style={[styles.header, {
       backgroundColor: colors.surface,
       borderBottomColor: colors.borderSoft
     }]}>
-        <View style={styles.brandRow}>
-          <Text style={[styles.brandTitle, {
+      <View style={styles.brandRow}>
+        <Text style={[styles.brandTitle, {
           color: colors.textPrimary
         }]}>QuickBiz</Text>
-          <View style={styles.brandOrangeDot} />
-        </View>
+        <View style={styles.brandOrangeDot} />
+      </View>
 
-        <TouchableOpacity style={[styles.settingsButton, {
+      <TouchableOpacity style={[styles.settingsButton, {
         backgroundColor: colors.card,
         borderColor: colors.border
       }]} onPress={() => router.push('/(tabs)/settings')} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Open settings">
-          <IconSymbol name="gearshape.fill" size={19} color={colors.textSecondary} />
+        <IconSymbol name="gearshape.fill" size={19} color={colors.textSecondary} />
+      </TouchableOpacity>
+    </View>
+
+    <ScrollView contentContainerStyle={[styles.scrollContent, {
+      backgroundColor: colors.background
+    }]} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Palette.primary} colors={[Palette.primary]} />}>
+      {/* 2. Hero Section */}
+      <View style={[styles.heroSection, {
+        backgroundColor: isDark ? colors.surface : '#F8F7FF'
+      }]}>
+        <Text style={styles.heroEyebrow}>INTELLIGENT OCR DIRECTORY</Text>
+
+        <Text style={[styles.heroHeading, {
+          color: colors.textPrimary
+        }]}>
+          Your business{'\n'}contacts, organised.
+        </Text>
+
+        <Text style={[styles.heroDescription, {
+          color: colors.textSecondary
+        }]}>
+          Scan and digitise physical business cards with privacy-preserving,
+          lightning-fast on-device optical character recognition.
+        </Text>
+
+        {/* Primary Action Button */}
+        <TouchableOpacity style={styles.primaryScanButton} onPress={() => router.push('/(tabs)/scan')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Scan business card">
+          <IconSymbol name="camera.fill" size={18} color="#FFFFFF" />
+          <Text style={styles.primaryScanButtonText}>Scan Business Card</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, {
-      backgroundColor: colors.background
-    }]} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Palette.primary} colors={[Palette.primary]} />}>
-        {/* 2. Hero Section */}
-        <View style={[styles.heroSection, {
-        backgroundColor: isDark ? colors.surface : '#F8F7FF'
-      }]}>
-          <Text style={styles.heroEyebrow}>INTELLIGENT OCR DIRECTORY</Text>
+      {/* 3. Hero Sunset Divider */}
+      <SunsetStripe height={3} style={styles.sunsetDivider} />
 
-          <Text style={[styles.heroHeading, {
-          color: colors.textPrimary
-        }]}>
-            Your business{'\n'}contacts, organised.
-          </Text>
-
-          <Text style={[styles.heroDescription, {
-          color: colors.textSecondary
-        }]}>
-            Scan and digitise physical business cards with privacy-preserving,
-            lightning-fast on-device optical character recognition.
-          </Text>
-
-          {/* Primary Action Button */}
-          <TouchableOpacity style={styles.primaryScanButton} onPress={() => router.push('/(tabs)/scan')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Scan business card">
-            <IconSymbol name="camera.fill" size={18} color="#FFFFFF" />
-            <Text style={styles.primaryScanButtonText}>Scan Business Card</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 3. Hero Sunset Divider */}
-        <SunsetStripe height={3} style={styles.sunsetDivider} />
-
-        {/* 4. Recent Contacts Section */}
-        <View style={styles.recentsSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, {
+      {/* 4. Recent Contacts Section */}
+      <View style={styles.recentsSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, {
             color: colors.textPrimary
           }]}>Recent Contacts</Text>
-            <Text style={[styles.totalCountText, {
+          <Text style={[styles.totalCountText, {
             color: colors.textTertiary
           }]}>{contacts.length} Total</Text>
-          </View>
+        </View>
 
-          {loading && !refreshing ? <View style={styles.loadingContainer}>
-              <ActivityIndicator color={Palette.primary} size="small" />
-              <Text style={[styles.loadingText, {
+        {loading && !refreshing ? <View style={styles.loadingContainer}>
+          <ActivityIndicator color={Palette.primary} size="small" />
+          <Text style={[styles.loadingText, {
             color: colors.textTertiary
           }]}>Loading directory...</Text>
-            </View> : recentContacts.length > 0 ? <View style={[styles.contactsCard, {
+        </View> : recentContacts.length > 0 ? <View style={[styles.contactsCard, {
           backgroundColor: colors.card,
           borderColor: colors.cardBorder
         }]}>
-              {recentContacts.map((contact, index) => <ContactRow key={contact.id || index.toString()} contact={contact} onPress={() => router.push({
+          {recentContacts.map((contact, index) => <ContactRow key={contact.id || index.toString()} contact={contact} onPress={() => router.push({
             pathname: '/contact-details',
             params: {
               id: contact.id
             }
           })} showDivider={index < recentContacts.length - 1} />)}
 
-              {contacts.length > 5 && <TouchableOpacity style={[styles.viewAllFooter, {
+          {contacts.length > 5 && <TouchableOpacity style={[styles.viewAllFooter, {
             backgroundColor: colors.surface,
             borderTopColor: colors.borderSoft
           }]} onPress={() => router.push('/(tabs)/contacts')} activeOpacity={0.7}>
-                  <Text style={styles.viewAllFooterText}>
-                    View all {contacts.length} contacts →
-                  </Text>
-                </TouchableOpacity>}
-            </View> : (/* 5. Empty State Card */
-        <View style={[styles.emptyCard, {
-          backgroundColor: colors.card,
-          borderColor: colors.cardBorder
-        }]}>
-              <View style={[styles.emptyIconCircle, {
-            backgroundColor: colors.surfaceCream,
-            borderColor: colors.borderBeige
+            <Text style={styles.viewAllFooterText}>
+              View all {contacts.length} contacts →
+            </Text>
+          </TouchableOpacity>}
+        </View> : (/* 5. Empty State Card */
+          <View style={[styles.emptyCard, {
+            backgroundColor: colors.card,
+            borderColor: colors.cardBorder
           }]}>
-                <IconSymbol name="person.2.fill" size={24} color={Palette.primary} />
-              </View>
-
-              <Text style={[styles.emptyTitle, {
-            color: colors.textPrimary
-          }]}>No Contacts Yet</Text>
-
-              <Text style={[styles.emptySubtitle, {
-            color: colors.textSecondary
-          }]}>
-                Capture your first physical card or enter details manually to start
-                building your directory.
-              </Text>
-
-              {/* Empty State Primary Action */}
-              <TouchableOpacity style={styles.emptyPrimaryButton} onPress={() => router.push('/(tabs)/scan')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Scan your first card">
-                <IconSymbol name="plus" size={16} color="#FFFFFF" />
-                <Text style={styles.emptyPrimaryButtonText}>
-                  Scan Your First Card
-                </Text>
-              </TouchableOpacity>
-
-              {/* Empty State Secondary Action */}
-              <TouchableOpacity style={[styles.emptySecondaryButton, {
-            backgroundColor: colors.surface,
-            borderColor: colors.border
-          }]} onPress={() => router.push({
-            pathname: '/review',
-            params: {
-              category: 'Other'
-            }
-          })} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Enter contact manually">
-                <IconSymbol name="pencil" size={15} color={colors.textPrimary} />
-                <Text style={[styles.emptySecondaryButtonText, {
-              color: colors.textPrimary
-            }]}>Enter Manually</Text>
-              </TouchableOpacity>
-
-              {/* Trust / Privacy Badge */}
-              <View style={styles.trustBadge}>
-                <IconSymbol name="lock.fill" size={12} color={colors.textTertiary} />
-                <Text style={[styles.trustText, {
-              color: colors.textTertiary
+            <View style={[styles.emptyIconCircle, {
+              backgroundColor: colors.surfaceCream,
+              borderColor: colors.borderBeige
             }]}>
-                  100% On-device ML • Private & Offline-ready
-                </Text>
-              </View>
-            </View>)}
-        </View>
-      </ScrollView>
-    </SafeAreaView>;
+              <IconSymbol name="person.2.fill" size={24} color={Palette.primary} />
+            </View>
+
+            <Text style={[styles.emptyTitle, {
+              color: colors.textPrimary
+            }]}>No Contacts Yet</Text>
+
+            <Text style={[styles.emptySubtitle, {
+              color: colors.textSecondary
+            }]}>
+              Capture your first physical card or enter details manually to start
+              building your directory.
+            </Text>
+
+            {/* Empty State Primary Action */}
+            <TouchableOpacity style={styles.emptyPrimaryButton} onPress={() => router.push('/(tabs)/scan')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Scan your first card">
+              <IconSymbol name="plus" size={16} color="#FFFFFF" />
+              <Text style={styles.emptyPrimaryButtonText}>
+                Scan Your First Card
+              </Text>
+            </TouchableOpacity>
+
+            {/* Empty State Secondary Action */}
+            <TouchableOpacity style={[styles.emptySecondaryButton, {
+              backgroundColor: colors.surface,
+              borderColor: colors.border
+            }]} onPress={() => router.push({
+              pathname: '/review',
+              params: {
+                category: 'Other'
+              }
+            })} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Enter contact manually">
+              <IconSymbol name="pencil" size={15} color={colors.textPrimary} />
+              <Text style={[styles.emptySecondaryButtonText, {
+                color: colors.textPrimary
+              }]}>Enter Manually</Text>
+            </TouchableOpacity>
+
+            {/* Trust / Privacy Badge */}
+            <View style={styles.trustBadge}>
+              <IconSymbol name="lock.fill" size={12} color={colors.textTertiary} />
+              <Text style={[styles.trustText, {
+                color: colors.textTertiary
+              }]}>
+                100% On-device ML • Private & Offline-ready
+              </Text>
+            </View>
+          </View>)}
+      </View>
+    </ScrollView>
+  </SafeAreaView>;
 }
 const styles = StyleSheet.create({
   safeArea: {

@@ -1,15 +1,15 @@
-import React, { useState, useRef, } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Image, Alert, Platform, Linking, StatusBar, } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView, useSafeAreaInsets, } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions, } from 'expo-camera';
-import { useRouter, } from 'expo-router';
-import { Spacing, Typography, BorderRadius, } from '@/constants/theme';
-import { PrimaryButton, } from '@/components/ui/PrimaryButton';
 import { DarkButton, } from '@/components/ui/DarkButton';
 import { IconSymbol, } from '@/components/ui/icon-symbol';
+import { PrimaryButton, } from '@/components/ui/PrimaryButton';
 import { SunsetStripe, } from '@/components/ui/SunsetStripe';
+import { BorderRadius, Spacing, Typography, } from '@/constants/theme';
 import { ocrService, } from '@/services/ocr.service';
+import { CameraView, useCameraPermissions, } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter, } from 'expo-router';
+import React, { useRef, useState, } from 'react';
+import { ActivityIndicator, Alert, Image, Linking, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View, } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets, } from 'react-native-safe-area-context';
 export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -166,45 +166,45 @@ export default function ScanScreen() {
     alignItems: 'center',
     padding: Spacing.xl
   }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#11101C" />
-      <View style={[styles.fallbackIconCircle, {
+    <StatusBar barStyle="light-content" backgroundColor="#11101C" />
+    <View style={[styles.fallbackIconCircle, {
       backgroundColor: '#252431',
       borderColor: 'rgba(255, 255, 255, 0.15)'
     }]}>
-        <IconSymbol name="camera.fill" size={32} color="#FA520F" />
-      </View>
-      <Text style={[styles.fallbackTitle, {
+      <IconSymbol name="camera.fill" size={32} color="#FA520F" />
+    </View>
+    <Text style={[styles.fallbackTitle, {
       color: '#FFFFFF'
     }]}>{title}</Text>
-      <Text style={[styles.fallbackSub, {
+    <Text style={[styles.fallbackSub, {
       color: '#D0D0D5'
     }]}>{message}</Text>
 
-      <View style={{
+    <View style={{
       gap: Spacing.md,
       width: '100%',
       maxWidth: 280,
       alignItems: 'center'
     }}>
-        <PrimaryButton title="Choose from Gallery" onPress={handlePickFromGallery} icon={<IconSymbol name="photo.on.rectangle" size={16} color="#FFFFFF" />} style={{
+      <PrimaryButton title="Choose from Gallery" onPress={handlePickFromGallery} icon={<IconSymbol name="photo.on.rectangle" size={16} color="#FFFFFF" />} style={{
         width: '100%'
       }} />
-        <DarkButton title="Enter Details Manually" onPress={handleEnterManually} style={{
+      <DarkButton title="Enter Details Manually" onPress={handleEnterManually} style={{
         width: '100%'
       }} />
-      </View>
+    </View>
 
-      {!isWebPlatform && <TouchableOpacity onPress={requestPermission} style={{
+    {!isWebPlatform && <TouchableOpacity onPress={requestPermission} style={{
       marginTop: Spacing.lg
     }}>
-          <Text style={{
+      <Text style={{
         color: '#FA520F',
         ...Typography.bodySmMedium
       }}>
-            Grant Camera Permissions
-          </Text>
-        </TouchableOpacity>}
-    </SafeAreaView>;
+        Grant Camera Permissions
+      </Text>
+    </TouchableOpacity>}
+  </SafeAreaView>;
   if (isWebPlatform) {
     return renderManualEntryLanding('Manual & Gallery Mode', 'Direct camera scanning is unavailable in web browsers. You can select an existing card photo from gallery or enter details manually.');
   }
@@ -214,14 +214,14 @@ export default function ScanScreen() {
       justifyContent: 'center',
       alignItems: 'center'
     }]}>
-        <StatusBar barStyle="light-content" backgroundColor="#11101C" />
-        <ActivityIndicator size="small" color="#FA520F" />
-        <Text style={[styles.loadingText, {
+      <StatusBar barStyle="light-content" backgroundColor="#11101C" />
+      <ActivityIndicator size="small" color="#FA520F" />
+      <Text style={[styles.loadingText, {
         color: '#D0D0D5'
       }]}>
-          Initializing camera hardware...
-        </Text>
-      </SafeAreaView>;
+        Initializing camera hardware...
+      </Text>
+    </SafeAreaView>;
   }
   if (!permission.granted) {
     return renderManualEntryLanding('Camera Permission Required', 'QuickBiz can scan cards using your camera or import photos directly from your device gallery.');
@@ -229,166 +229,166 @@ export default function ScanScreen() {
   return <SafeAreaView style={[styles.container, {
     backgroundColor: '#11101C'
   }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="light-content" backgroundColor="#11101C" />
+    <StatusBar barStyle="light-content" backgroundColor="#11101C" />
 
-      {/* 1. Top Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Go back">
-          <IconSymbol name="arrow.left" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+    {/* 1. Top Header */}
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Go back">
+        <IconSymbol name="arrow.left" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Scanner</Text>
+      <Text style={styles.headerTitle}>Scanner</Text>
 
-        <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={styles.headerUserBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Account settings">
-          <IconSymbol name="person.fill" size={17} color="#D0D0D5" />
-        </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={styles.headerUserBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Account settings">
+        <IconSymbol name="person.fill" size={17} color="#D0D0D5" />
+      </TouchableOpacity>
+    </View>
+
+    {/* 2. Main Viewport / Camera / Preview / OCR */}
+    {scanState === 'scan' && <View style={styles.scannerBody}>
+      {/* Live Camera View */}
+      <View style={styles.cameraWrapper}>
+        <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} enableTorch={flashOn} />
+
+        {/* Dark Camera Overlay with Detection Frame & Top Controls */}
+        <View pointerEvents="box-none" style={styles.cameraOverlay}>
+          {/* Top Scanner Controls Bar */}
+          <View style={styles.topControlsRow}>
+            {/* Left: Close / Reset button */}
+            <TouchableOpacity onPress={() => router.back()} style={styles.topControlCircle} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel="Close scanner">
+              <IconSymbol name="xmark" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            {/* Center: On-Device OCR status pill */}
+            <View style={styles.autoDetectPill}>
+              <IconSymbol name="sparkles" size={13} color="#FA520F" />
+              <Text style={styles.autoDetectText}>ON-DEVICE OCR</Text>
+            </View>
+
+            {/* Right: Flash toggle button */}
+            <TouchableOpacity onPress={toggleFlash} style={[styles.topControlCircle, flashOn && styles.topControlActive]} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={flashOn ? 'Turn off flash' : 'Turn on flash'}>
+              <IconSymbol name={flashOn ? 'bolt.fill' : 'bolt.slash.fill'} size={16} color={flashOn ? '#FA520F' : '#FFFFFF'} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Status Indicator Pill */}
+          <View style={styles.statusPillWrapper}>
+            <View style={styles.statusPill}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusPillText}>Hold steady • Align edges inside frame</Text>
+            </View>
+          </View>
+
+          {/* Business Card Detection Frame */}
+          <View style={styles.viewFinderContainer} pointerEvents="none">
+            <View style={styles.businessCardFrame}>
+              {/* QuickBiz Sunset Orange Corner Accents (#FA520F) */}
+              <View style={[styles.cornerBracket, styles.cornerTL]} />
+              <View style={[styles.cornerBracket, styles.cornerTR]} />
+              <View style={[styles.cornerBracket, styles.cornerBL]} />
+              <View style={[styles.cornerBracket, styles.cornerBR]} />
+            </View>
+          </View>
+
+          {/* Instructions below frame */}
+          <View style={styles.instructionContainer}>
+            <Text style={styles.instructionTitle}>
+              Place the business card inside the frame
+            </Text>
+            <View style={styles.instructionSubRow}>
+              <IconSymbol name="lock.fill" size={12} color="#D0D0D5" />
+              <Text style={styles.instructionSubtitle}>
+                Google ML Kit On-Device Recognition • 100% Private
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
 
-      {/* 2. Main Viewport / Camera / Preview / OCR */}
-      {scanState === 'scan' && <View style={styles.scannerBody}>
-          {/* Live Camera View */}
-          <View style={styles.cameraWrapper}>
-            <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} enableTorch={flashOn} />
-
-            {/* Dark Camera Overlay with Detection Frame & Top Controls */}
-            <View pointerEvents="box-none" style={styles.cameraOverlay}>
-              {/* Top Scanner Controls Bar */}
-              <View style={styles.topControlsRow}>
-                {/* Left: Close / Reset button */}
-                <TouchableOpacity onPress={() => router.back()} style={styles.topControlCircle} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel="Close scanner">
-                  <IconSymbol name="xmark" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-
-                {/* Center: On-Device OCR status pill */}
-                <View style={styles.autoDetectPill}>
-                  <IconSymbol name="sparkles" size={13} color="#FA520F" />
-                  <Text style={styles.autoDetectText}>ON-DEVICE OCR</Text>
-                </View>
-
-                {/* Right: Flash toggle button */}
-                <TouchableOpacity onPress={toggleFlash} style={[styles.topControlCircle, flashOn && styles.topControlActive]} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={flashOn ? 'Turn off flash' : 'Turn on flash'}>
-                  <IconSymbol name={flashOn ? 'bolt.fill' : 'bolt.slash.fill'} size={16} color={flashOn ? '#FA520F' : '#FFFFFF'} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Status Indicator Pill */}
-              <View style={styles.statusPillWrapper}>
-                <View style={styles.statusPill}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.statusPillText}>Hold steady • Align edges inside frame</Text>
-                </View>
-              </View>
-
-              {/* Business Card Detection Frame */}
-              <View style={styles.viewFinderContainer} pointerEvents="none">
-                <View style={styles.businessCardFrame}>
-                  {/* QuickBiz Sunset Orange Corner Accents (#FA520F) */}
-                  <View style={[styles.cornerBracket, styles.cornerTL]} />
-                  <View style={[styles.cornerBracket, styles.cornerTR]} />
-                  <View style={[styles.cornerBracket, styles.cornerBL]} />
-                  <View style={[styles.cornerBracket, styles.cornerBR]} />
-                </View>
-              </View>
-
-              {/* Instructions below frame */}
-              <View style={styles.instructionContainer}>
-                <Text style={styles.instructionTitle}>
-                  Place the business card inside the frame
-                </Text>
-                <View style={styles.instructionSubRow}>
-                  <IconSymbol name="lock.fill" size={12} color="#D0D0D5" />
-                  <Text style={styles.instructionSubtitle}>
-                    Google ML Kit On-Device Recognition • 100% Private
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* 3. Bottom Action Controls Bar */}
-          <View style={[styles.bottomControlsBar, {
+      {/* 3. Bottom Action Controls Bar */}
+      <View style={[styles.bottomControlsBar, {
         paddingBottom: Math.max(insets.bottom, 16)
       }]}>
-            {/* Gallery Action */}
-            <TouchableOpacity onPress={handlePickFromGallery} activeOpacity={0.75} style={styles.bottomActionButton} accessibilityRole="button" accessibilityLabel="Choose card from Gallery">
-              <View style={styles.bottomActionCircle}>
-                <IconSymbol name="photo.on.rectangle" size={21} color="#FFFFFF" />
-              </View>
-              <Text style={styles.bottomActionLabel}>Gallery</Text>
-            </TouchableOpacity>
-
-            {/* Center Primary Capture Button */}
-            <TouchableOpacity onPress={handleCapture} activeOpacity={0.75} style={styles.shutterOuterRing} accessibilityRole="button" accessibilityLabel="Take business card photo">
-              <View style={styles.shutterInnerDisc}>
-                <IconSymbol name="camera.fill" size={24} color="#FFFFFF" />
-              </View>
-            </TouchableOpacity>
-
-            {/* Manual Action */}
-            <TouchableOpacity onPress={handleEnterManually} activeOpacity={0.75} style={styles.bottomActionButton} accessibilityRole="button" accessibilityLabel="Enter contact details manually">
-              <View style={styles.bottomActionCircle}>
-                <IconSymbol name="pencil" size={19} color="#FFFFFF" />
-              </View>
-              <Text style={styles.bottomActionLabel}>Manual</Text>
-            </TouchableOpacity>
+        {/* Gallery Action */}
+        <TouchableOpacity onPress={handlePickFromGallery} activeOpacity={0.75} style={styles.bottomActionButton} accessibilityRole="button" accessibilityLabel="Choose card from Gallery">
+          <View style={styles.bottomActionCircle}>
+            <IconSymbol name="photo.on.rectangle" size={21} color="#FFFFFF" />
           </View>
-        </View>}
+          <Text style={styles.bottomActionLabel}>Gallery</Text>
+        </TouchableOpacity>
 
-      {/* Preview State */}
-      {scanState === 'preview' && <View style={[styles.previewContainer, {
+        {/* Center Primary Capture Button */}
+        <TouchableOpacity onPress={handleCapture} activeOpacity={0.75} style={styles.shutterOuterRing} accessibilityRole="button" accessibilityLabel="Take business card photo">
+          <View style={styles.shutterInnerDisc}>
+            <IconSymbol name="camera.fill" size={24} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Manual Action */}
+        <TouchableOpacity onPress={handleEnterManually} activeOpacity={0.75} style={styles.bottomActionButton} accessibilityRole="button" accessibilityLabel="Enter contact details manually">
+          <View style={styles.bottomActionCircle}>
+            <IconSymbol name="pencil" size={19} color="#FFFFFF" />
+          </View>
+          <Text style={styles.bottomActionLabel}>Manual</Text>
+        </TouchableOpacity>
+      </View>
+    </View>}
+
+    {/* Preview State */}
+    {scanState === 'preview' && <View style={[styles.previewContainer, {
       paddingBottom: Math.max(insets.bottom, 16)
     }]}>
-          <View style={styles.previewImageContainer}>
-            {photoUri && <Image source={{
+      <View style={styles.previewImageContainer}>
+        {photoUri && <Image source={{
           uri: photoUri
         }} style={styles.previewImage} resizeMode="contain" />}
-          </View>
+      </View>
 
-          <View style={styles.previewInfo}>
-            <Text style={styles.previewTitle}>Review Card Photo</Text>
-            <Text style={styles.previewSubtitle}>
-              Ensure contact information, name, and phone are sharp and clear before running on-device recognition.
-            </Text>
-          </View>
+      <View style={styles.previewInfo}>
+        <Text style={styles.previewTitle}>Review Card Photo</Text>
+        <Text style={styles.previewSubtitle}>
+          Ensure contact information, name, and phone are sharp and clear before running on-device recognition.
+        </Text>
+      </View>
 
-          <View style={styles.previewControls}>
-            <DarkButton title="Retake" onPress={handleRetake} style={styles.previewBtn} />
-            <PrimaryButton title="Extract Details" onPress={handleUsePhoto} style={styles.previewBtn} icon={<IconSymbol name="checkmark.circle.fill" size={16} color="#FFFFFF" />} />
-          </View>
-        </View>}
+      <View style={styles.previewControls}>
+        <DarkButton title="Retake" onPress={handleRetake} style={styles.previewBtn} />
+        <PrimaryButton title="Extract Details" onPress={handleUsePhoto} style={styles.previewBtn} icon={<IconSymbol name="checkmark.circle.fill" size={16} color="#FFFFFF" />} />
+      </View>
+    </View>}
 
-      {/* OCR Processing State */}
-      {scanState === 'ocr' && <View style={[styles.ocrContainer, {
+    {/* OCR Processing State */}
+    {scanState === 'ocr' && <View style={[styles.ocrContainer, {
       backgroundColor: '#11101C'
     }]}>
-          <View style={styles.ocrPanel}>
-            <ActivityIndicator size="small" color="#FA520F" style={styles.ocrSpinner} />
-            <Text style={styles.ocrTitle}>Reading your card</Text>
-            <Text style={styles.ocrSubtitle}>
-              Extracting contact details and structuring fields on-device
-            </Text>
+      <View style={styles.ocrPanel}>
+        <ActivityIndicator size="small" color="#FA520F" style={styles.ocrSpinner} />
+        <Text style={styles.ocrTitle}>Reading your card</Text>
+        <Text style={styles.ocrSubtitle}>
+          Extracting contact details and structuring fields on-device
+        </Text>
 
-            <View style={styles.ocrSteps}>
-              <View style={styles.ocrStepRow}>
-                <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
-                <Text style={styles.ocrStepText}>Reading layout geometry</Text>
-              </View>
-              <View style={styles.ocrStepRow}>
-                <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
-                <Text style={styles.ocrStepText}>Analyzing typography with ML Kit</Text>
-              </View>
-              <View style={styles.ocrStepRow}>
-                <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
-                <Text style={styles.ocrStepText}>Formatting phone, email, and address</Text>
-              </View>
-            </View>
-
-            <View style={styles.ocrStripeWrapper}>
-              <SunsetStripe height={3} />
-            </View>
+        <View style={styles.ocrSteps}>
+          <View style={styles.ocrStepRow}>
+            <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
+            <Text style={styles.ocrStepText}>Reading layout geometry</Text>
           </View>
-        </View>}
-    </SafeAreaView>;
+          <View style={styles.ocrStepRow}>
+            <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
+            <Text style={styles.ocrStepText}>Analyzing typography with ML Kit</Text>
+          </View>
+          <View style={styles.ocrStepRow}>
+            <IconSymbol name="checkmark.circle.fill" size={15} color="#FA520F" />
+            <Text style={styles.ocrStepText}>Formatting phone, email, and address</Text>
+          </View>
+        </View>
+
+        <View style={styles.ocrStripeWrapper}>
+          <SunsetStripe height={3} />
+        </View>
+      </View>
+    </View>}
+  </SafeAreaView>;
 }
 const styles = StyleSheet.create({
   container: {

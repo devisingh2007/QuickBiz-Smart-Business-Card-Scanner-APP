@@ -25,11 +25,11 @@
 
 | 1. Sign In | 2. Home Dashboard | 3. Live Card Scanner | 4. Extracted Review |
 |:---:|:---:|:---:|:---:|
-| <img src="mobile/assets/images/icon.png" width="180" alt="Sign In Screen" /><br/>*User Authentication* | <img src="mobile/assets/images/icon.png" width="180" alt="Home Dashboard" /><br/>*Stats & Quick Actions* | <img src="mobile/assets/images/icon.png" width="180" alt="Scanner View" /><br/>*Camera Alignment Guide* | <img src="mobile/assets/images/icon.png" width="180" alt="Review Screen" /><br/>*Quality Score & Edit* |
+| <img src="mobile/assets/images/Sign%20In.png" width="180" alt="Sign In Screen" /><br/>*User Authentication* | <img src="mobile/assets/images/Home%20Dashboard.png" width="180" alt="Home Dashboard" /><br/>*Stats & Quick Actions* | <img src="mobile/assets/images/Live%20Card%20Scanner.png" width="180" alt="Scanner View" /><br/>*Camera Alignment Guide* | <img src="mobile/assets/images/Extracted%20Review.png" width="180" alt="Review Screen" /><br/>*Quality Score & Edit* |
 
 | 5. Contacts Directory | 6. Category Filtering | 7. Contact Profile | 8. Settings & Sync |
 |:---:|:---:|:---:|:---:|
-| <img src="mobile/assets/images/icon.png" width="180" alt="Contacts Directory" /><br/>*Search & Grouping* | <img src="mobile/assets/images/icon.png" width="180" alt="Category Filter" /><br/>*Clients, Leads, Devs* | <img src="mobile/assets/images/icon.png" width="180" alt="Contact Profile" /><br/>*One-Tap Call & Email* | <img src="mobile/assets/images/icon.png" width="180" alt="Settings Screen" /><br/>*Cloud Sync & Storage* |
+| <img src="mobile/assets/images/Contacts%20Directory.png" width="180" alt="Contacts Directory" /><br/>*Search & Grouping* | <img src="mobile/assets/images/Category%20Filtering.png" width="180" alt="Category Filter" /><br/>*Clients, Leads, Devs* | <img src="mobile/assets/images/Contact%20Profile.png" width="180" alt="Contact Profile" /><br/>*One-Tap Call & Email* | <img src="mobile/assets/images/Settings%20%26%20Sync.png" width="180" alt="Settings Screen" /><br/>*Cloud Sync & Storage* |
 
 > 📷 *For the complete 15-screen inventory and high-resolution capture instructions, see [README_SCREENSHOTS.md](README_SCREENSHOTS.md).*
 

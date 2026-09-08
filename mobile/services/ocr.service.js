@@ -3,7 +3,7 @@ import { parseOcrResult, } from './contact-parser.service';
 let mlKitModule = null;
 try {
   mlKitModule = require('expo-mlkit-ocr');
-} catch {}
+} catch { }
 export const isOcrAvailable = () => {
   return Platform.OS !== 'web' && mlKitModule != null && typeof mlKitModule.recognizeText === 'function';
 };

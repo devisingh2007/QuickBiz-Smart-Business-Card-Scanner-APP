@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform, } from 'react-native';
 const getBaseUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-  const defaultUrl = 'https://quickbiz-smart-business-card-scanner-app.onrender.com/api';
+  const defaultUrl = 'https://quickbiz-smart-business-card-scanner-app.onrender.com';
   const target = envUrl || defaultUrl;
   let normalized = target.replace(/\/+$/, '');
   if (!normalized.endsWith('/api')) {

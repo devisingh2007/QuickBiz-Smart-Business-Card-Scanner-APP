@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Contacts from 'expo-contacts';
 import { Platform, } from 'react-native';
-import { apiService, } from './api.service';
 import { normalizeEmail, normalizePhone, } from '../utils/normalize';
+import { apiService, } from './api.service';
 class ContactStore {
   contacts = [];
   initialized = false;

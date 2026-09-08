@@ -1,16 +1,16 @@
-import React, { useState, useCallback, } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Modal, Pressable, StatusBar, ActivityIndicator, } from 'react-native';
-import { SafeAreaView, } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect, } from 'expo-router';
-import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Typography, Spacing, BorderRadius, } from '@/constants/theme';
-import { useTheme, } from '@/hooks/use-theme';
-import { IconSymbol, } from '@/components/ui/icon-symbol';
 import { Avatar, } from '@/components/ui/Avatar';
+import { IconSymbol, } from '@/components/ui/icon-symbol';
 import { CATEGORIES, } from '@/constants/categories';
+import { BorderRadius, Spacing, Typography, } from '@/constants/theme';
+import { useTheme, } from '@/hooks/use-theme';
 import { apiService, } from '@/services/api.service';
 import { contactStore, } from '@/services/contact.store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import { useFocusEffect, useRouter, } from 'expo-router';
+import React, { useCallback, useState, } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, } from 'react-native';
+import { SafeAreaView, } from 'react-native-safe-area-context';
 const DEFAULT_CATEGORY_STORAGE_KEY = '@quickbiz_default_category';
 export default function SettingsScreen() {
   const router = useRouter();
@@ -139,461 +139,461 @@ export default function SettingsScreen() {
   return <SafeAreaView style={[styles.container, {
     backgroundColor: colors.background
   }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+    <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
-      {/* 1. Header */}
-      <View style={[styles.header, {
+    {/* 1. Header */}
+    <View style={[styles.header, {
       backgroundColor: colors.surface,
       borderBottomColor: colors.borderSoft
     }]}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerOrangeDot} />
-          <Text style={[styles.headerTitle, {
+      <View style={styles.headerLeft}>
+        <View style={styles.headerOrangeDot} />
+        <Text style={[styles.headerTitle, {
           color: colors.textPrimary
         }]}>Settings</Text>
-        </View>
-
-        <TouchableOpacity onPress={() => checkSyncStatus(user)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="User profile initials">
-          <Avatar name={user?.name || 'QuickBiz'} size="sm" variant="cream" />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* 2. Main Page Title */}
-        <View style={styles.titleSection}>
-          <Text style={[styles.mainTitle, {
+      <TouchableOpacity onPress={() => checkSyncStatus(user)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="User profile initials">
+        <Avatar name={user?.name || 'QuickBiz'} size="sm" variant="cream" />
+      </TouchableOpacity>
+    </View>
+
+    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* 2. Main Page Title */}
+      <View style={styles.titleSection}>
+        <Text style={[styles.mainTitle, {
           color: colors.textPrimary
         }]}>
-            Account & Preferences
-          </Text>
-          <Text style={[styles.mainSubtitle, {
+          Account & Preferences
+        </Text>
+        <Text style={[styles.mainSubtitle, {
           color: colors.textSecondary
         }]}>
-            Manage your QuickBiz profile, appearance, default tags, and synchronization.
-          </Text>
-        </View>
+          Manage your QuickBiz profile, appearance, default tags, and synchronization.
+        </Text>
+      </View>
 
-        {/* 3. Section: ACCOUNT PROFILE */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, {
+      {/* 3. Section: ACCOUNT PROFILE */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, {
           color: colors.textMuted
         }]}>ACCOUNT PROFILE</Text>
-          <View style={[styles.profileCard, {
+        <View style={[styles.profileCard, {
           backgroundColor: colors.card,
           borderColor: colors.cardBorder
         }]}>
-            <Avatar name={user?.name || 'Offline Guest'} size="md" variant="cream" style={styles.profileAvatar} />
-            <View style={styles.profileInfo}>
-              <View style={styles.profileNameRow}>
-                <Text style={[styles.profileName, {
+          <Avatar name={user?.name || 'Offline Guest'} size="md" variant="cream" style={styles.profileAvatar} />
+          <View style={styles.profileInfo}>
+            <View style={styles.profileNameRow}>
+              <Text style={[styles.profileName, {
                 color: colors.textPrimary
               }]} numberOfLines={1}>
-                  {user?.name || 'Offline Guest'}
-                </Text>
-                {user && <View style={[styles.verifiedBadge, {
+                {user?.name || 'Offline Guest'}
+              </Text>
+              {user && <View style={[styles.verifiedBadge, {
                 backgroundColor: isDark ? 'rgba(27,135,85,0.2)' : '#EDF8F2'
               }]}>
-                    <IconSymbol name="checkmark.seal.fill" size={12} color="#1B8755" />
-                    <Text style={styles.verifiedText}>Verified</Text>
-                  </View>}
-              </View>
-
-              <Text style={[styles.profileEmail, {
-              color: colors.textSecondary
-            }]} numberOfLines={1}>
-                {user?.email || 'Local device workspace'}
-              </Text>
-
-              {user?.id ? <Text style={[styles.profileId, {
-              color: colors.textMuted
-            }]} numberOfLines={1}>
-                  QuickBiz ID: {user.id.slice(-6).toUpperCase()}
-                </Text> : <Text style={[styles.profileId, {
-              color: colors.textMuted
-            }]} numberOfLines={1}>
-                  QuickBiz ID: LOCAL-GUEST
-                </Text>}
+                <IconSymbol name="checkmark.seal.fill" size={12} color="#1B8755" />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>}
             </View>
 
-            <IconSymbol name="chevron.right" size={15} color={colors.textMuted} style={styles.chevronIcon} />
-          </View>
-        </View>
+            <Text style={[styles.profileEmail, {
+              color: colors.textSecondary
+            }]} numberOfLines={1}>
+              {user?.email || 'Local device workspace'}
+            </Text>
 
-        {/* 4. Section: PREFERENCES */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, {
+            {user?.id ? <Text style={[styles.profileId, {
+              color: colors.textMuted
+            }]} numberOfLines={1}>
+              QuickBiz ID: {user.id.slice(-6).toUpperCase()}
+            </Text> : <Text style={[styles.profileId, {
+              color: colors.textMuted
+            }]} numberOfLines={1}>
+              QuickBiz ID: LOCAL-GUEST
+            </Text>}
+          </View>
+
+          <IconSymbol name="chevron.right" size={15} color={colors.textMuted} style={styles.chevronIcon} />
+        </View>
+      </View>
+
+      {/* 4. Section: PREFERENCES */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, {
           color: colors.textMuted
         }]}>PREFERENCES</Text>
-          <View style={[styles.groupCard, {
+        <View style={[styles.groupCard, {
           backgroundColor: colors.card,
           borderColor: colors.cardBorder
         }]}>
-            {/* Row 1: Appearance (Theme) */}
-            <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={() => setIsThemeModalVisible(true)} accessibilityRole="button" accessibilityLabel="Change theme appearance">
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIconContainer, {
+          {/* Row 1: Appearance (Theme) */}
+          <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={() => setIsThemeModalVisible(true)} accessibilityRole="button" accessibilityLabel="Change theme appearance">
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIconContainer, {
                 backgroundColor: isDark ? colors.surface : '#F7F7F8'
               }]}>
-                  <IconSymbol name={isDark ? 'moon.fill' : 'sun.max.fill'} size={17} color={colors.textPrimary} />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={[styles.rowTitle, {
+                <IconSymbol name={isDark ? 'moon.fill' : 'sun.max.fill'} size={17} color={colors.textPrimary} />
+              </View>
+              <View style={styles.rowTextContainer}>
+                <Text style={[styles.rowTitle, {
                   color: colors.textPrimary
                 }]}>Appearance</Text>
-                  <Text style={[styles.rowSubtitle, {
+                <Text style={[styles.rowSubtitle, {
                   color: colors.textSecondary
                 }]}>
-                    Light mode, dark mode, or system default
-                  </Text>
-                </View>
+                  Light mode, dark mode, or system default
+                </Text>
               </View>
+            </View>
 
-              <View style={styles.rowRight}>
-                <View style={[styles.categoryBadge, {
+            <View style={styles.rowRight}>
+              <View style={[styles.categoryBadge, {
                 backgroundColor: isDark ? colors.surface : colors.textPrimary
               }]}>
-                  <Text style={[styles.categoryBadgeText, {
+                <Text style={[styles.categoryBadgeText, {
                   color: isDark ? colors.primary : '#FFFFFF'
                 }]}>
-                    {getThemeLabel(themePreference)}
-                  </Text>
-                </View>
-                <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
+                  {getThemeLabel(themePreference)}
+                </Text>
               </View>
-            </TouchableOpacity>
+              <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
 
-            <View style={[styles.rowDivider, {
+          <View style={[styles.rowDivider, {
             backgroundColor: colors.borderSoft
           }]} />
 
-            {/* Row 2: Default Category */}
-            <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={() => setIsCategoryModalVisible(true)} accessibilityRole="button" accessibilityLabel="Change default category">
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIconContainer, {
+          {/* Row 2: Default Category */}
+          <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={() => setIsCategoryModalVisible(true)} accessibilityRole="button" accessibilityLabel="Change default category">
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIconContainer, {
                 backgroundColor: isDark ? colors.surface : '#F7F7F8'
               }]}>
-                  <IconSymbol name="tag" size={17} color={colors.textPrimary} />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={[styles.rowTitle, {
+                <IconSymbol name="tag" size={17} color={colors.textPrimary} />
+              </View>
+              <View style={styles.rowTextContainer}>
+                <Text style={[styles.rowTitle, {
                   color: colors.textPrimary
                 }]}>Default Category</Text>
-                  <Text style={[styles.rowSubtitle, {
+                <Text style={[styles.rowSubtitle, {
                   color: colors.textSecondary
                 }]}>
-                    Pre-selected tag when saving new cards
-                  </Text>
-                </View>
+                  Pre-selected tag when saving new cards
+                </Text>
               </View>
+            </View>
 
-              <View style={styles.rowRight}>
-                <View style={[styles.categoryBadge, {
+            <View style={styles.rowRight}>
+              <View style={[styles.categoryBadge, {
                 backgroundColor: isDark ? colors.surface : colors.textPrimary
               }]}>
-                  <Text style={[styles.categoryBadgeText, {
+                <Text style={[styles.categoryBadgeText, {
                   color: isDark ? colors.textPrimary : '#FFFFFF'
                 }]}>
-                    {defaultCategory}
-                  </Text>
-                </View>
-                <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
+                  {defaultCategory}
+                </Text>
               </View>
-            </TouchableOpacity>
-          </View>
+              <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* 5. Section: DATA & SYNC */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, {
+      {/* 5. Section: DATA & SYNC */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, {
           color: colors.textMuted
         }]}>DATA & SYNC</Text>
-          <View style={[styles.groupCard, {
+        <View style={[styles.groupCard, {
           backgroundColor: colors.card,
           borderColor: colors.cardBorder
         }]}>
-            {/* Row 1: Cloud & Native Sync */}
-            <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={() => checkSyncStatus(user)} accessibilityRole="button" accessibilityLabel="Sync status and refresh">
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIconContainer, {
+          {/* Row 1: Cloud & Native Sync */}
+          <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={() => checkSyncStatus(user)} accessibilityRole="button" accessibilityLabel="Sync status and refresh">
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIconContainer, {
                 backgroundColor: isDark ? colors.surface : '#F7F7F8'
               }]}>
-                  <IconSymbol name="arrow.triangle.2.circlepath" size={17} color={colors.textPrimary} />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={[styles.rowTitle, {
+                <IconSymbol name="arrow.triangle.2.circlepath" size={17} color={colors.textPrimary} />
+              </View>
+              <View style={styles.rowTextContainer}>
+                <Text style={[styles.rowTitle, {
                   color: colors.textPrimary
                 }]}>Cloud & Native Sync</Text>
-                  <Text style={[styles.rowSubtitle, {
+                <Text style={[styles.rowSubtitle, {
                   color: colors.textSecondary
                 }]}>
-                    {contactCount} {contactCount === 1 ? 'card' : 'cards'} digitized • 100% On-device OCR
-                  </Text>
-                </View>
+                  {contactCount} {contactCount === 1 ? 'card' : 'cards'} digitized • 100% On-device OCR
+                </Text>
               </View>
+            </View>
 
-              <View style={styles.rowRight}>
-                {syncStatus === 'Synced' && <View style={[styles.syncBadgeSuccess, {
+            <View style={styles.rowRight}>
+              {syncStatus === 'Synced' && <View style={[styles.syncBadgeSuccess, {
                 backgroundColor: isDark ? 'rgba(27,135,85,0.2)' : '#EDF8F2'
               }]}>
-                    <IconSymbol name="checkmark" size={11} color="#1B8755" />
-                    <Text style={styles.syncBadgeSuccessText}>Synced</Text>
-                  </View>}
-                {syncStatus === 'Syncing' && <View style={[styles.syncBadgeSyncing, {
+                <IconSymbol name="checkmark" size={11} color="#1B8755" />
+                <Text style={styles.syncBadgeSuccessText}>Synced</Text>
+              </View>}
+              {syncStatus === 'Syncing' && <View style={[styles.syncBadgeSyncing, {
                 backgroundColor: isDark ? 'rgba(250,82,15,0.15)' : '#FFF8E0'
               }]}>
-                    <ActivityIndicator size="small" color="#FA520F" style={{
+                <ActivityIndicator size="small" color="#FA520F" style={{
                   transform: [{
                     scale: 0.65
                   }]
                 }} />
-                    <Text style={styles.syncBadgeSyncingText}>Syncing</Text>
-                  </View>}
-                {syncStatus === 'Pending' && <View style={[styles.syncBadgePending, {
+                <Text style={styles.syncBadgeSyncingText}>Syncing</Text>
+              </View>}
+              {syncStatus === 'Pending' && <View style={[styles.syncBadgePending, {
                 backgroundColor: isDark ? 'rgba(217,119,6,0.2)' : '#FEF3C7'
               }]}>
-                    <Text style={styles.syncBadgePendingText}>Pending</Text>
-                  </View>}
-                {(syncStatus === 'Offline' || syncStatus === 'Local Only') && <View style={[styles.syncBadgeNeutral, {
+                <Text style={styles.syncBadgePendingText}>Pending</Text>
+              </View>}
+              {(syncStatus === 'Offline' || syncStatus === 'Local Only') && <View style={[styles.syncBadgeNeutral, {
                 backgroundColor: isDark ? colors.surface : '#F3F4F6'
               }]}>
-                    <Text style={[styles.syncBadgeNeutralText, {
+                <Text style={[styles.syncBadgeNeutralText, {
                   color: colors.textSecondary
                 }]}>
-                      {syncStatus}
-                    </Text>
-                  </View>}
-                {syncStatus === 'Error' && <View style={[styles.syncBadgeError, {
+                  {syncStatus}
+                </Text>
+              </View>}
+              {syncStatus === 'Error' && <View style={[styles.syncBadgeError, {
                 backgroundColor: isDark ? 'rgba(220,38,38,0.2)' : '#FEE2E2'
               }]}>
-                    <Text style={styles.syncBadgeErrorText}>Error</Text>
-                  </View>}
-              </View>
-            </TouchableOpacity>
+                <Text style={styles.syncBadgeErrorText}>Error</Text>
+              </View>}
+            </View>
+          </TouchableOpacity>
 
-            <View style={[styles.rowDivider, {
+          <View style={[styles.rowDivider, {
             backgroundColor: colors.borderSoft
           }]} />
 
-            {/* Row 2: Local Card Directory */}
-            <View style={styles.groupRow}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIconContainer, {
+          {/* Row 2: Local Card Directory */}
+          <View style={styles.groupRow}>
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIconContainer, {
                 backgroundColor: isDark ? colors.surface : '#F7F7F8'
               }]}>
-                  <IconSymbol name="lock.fill" size={17} color={colors.textPrimary} />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={[styles.rowTitle, {
+                <IconSymbol name="lock.fill" size={17} color={colors.textPrimary} />
+              </View>
+              <View style={styles.rowTextContainer}>
+                <Text style={[styles.rowTitle, {
                   color: colors.textPrimary
                 }]}>Local Card Directory</Text>
-                  <Text style={[styles.rowSubtitle, {
+                <Text style={[styles.rowSubtitle, {
                   color: colors.textSecondary
                 }]}>
-                    Cached offline with high-res scans
-                  </Text>
-                </View>
+                  Cached offline with high-res scans
+                </Text>
               </View>
+            </View>
 
-              <View style={styles.rowRight}>
-                <Text style={[styles.storageSizeText, {
+            <View style={styles.rowRight}>
+              <Text style={[styles.storageSizeText, {
                 color: colors.textMuted
               }]}>
-                  {storageSizeKB} KB
-                </Text>
-                <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
-              </View>
+                {storageSizeKB} KB
+              </Text>
+              <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
             </View>
           </View>
         </View>
+      </View>
 
-        {/* 6. Section: ACCOUNT ACTIONS */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, {
+      {/* 6. Section: ACCOUNT ACTIONS */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, {
           color: colors.textMuted
         }]}>ACCOUNT ACTIONS</Text>
-          <View style={[styles.groupCard, {
+        <View style={[styles.groupCard, {
           backgroundColor: colors.card,
           borderColor: colors.cardBorder
         }]}>
-            {/* Row 1: Log Out */}
-            <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={handleLogout} accessibilityRole="button" accessibilityLabel="Log out of this device">
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIconContainer, {
+          {/* Row 1: Log Out */}
+          <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={handleLogout} accessibilityRole="button" accessibilityLabel="Log out of this device">
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIconContainer, {
                 backgroundColor: isDark ? colors.surface : '#F7F7F8'
               }]}>
-                  <IconSymbol name="rectangle.portrait.and.arrow.right" size={17} color={colors.textPrimary} />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={[styles.rowTitle, {
+                <IconSymbol name="rectangle.portrait.and.arrow.right" size={17} color={colors.textPrimary} />
+              </View>
+              <View style={styles.rowTextContainer}>
+                <Text style={[styles.rowTitle, {
                   color: colors.textPrimary
                 }]}>Log Out</Text>
-                  <Text style={[styles.rowSubtitle, {
+                <Text style={[styles.rowSubtitle, {
                   color: colors.textSecondary
                 }]}>
-                    Sign out of this device
-                  </Text>
-                </View>
+                  Sign out of this device
+                </Text>
               </View>
+            </View>
 
-              <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
-            </TouchableOpacity>
+            <IconSymbol name="chevron.right" size={15} color={colors.textMuted} />
+          </TouchableOpacity>
 
-            <View style={[styles.rowDivider, {
+          <View style={[styles.rowDivider, {
             backgroundColor: colors.borderSoft
           }]} />
 
-            {/* Row 2: Delete Account */}
-            <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={handleDeleteAccount} accessibilityRole="button" accessibilityLabel="Delete account and erase records">
-              <View style={styles.rowLeft}>
-                <View style={[styles.rowIconContainer, {
+          {/* Row 2: Delete Account */}
+          <TouchableOpacity style={styles.groupRow} activeOpacity={0.7} onPress={handleDeleteAccount} accessibilityRole="button" accessibilityLabel="Delete account and erase records">
+            <View style={styles.rowLeft}>
+              <View style={[styles.rowIconContainer, {
                 backgroundColor: isDark ? 'rgba(220,38,38,0.15)' : '#FEE2E2'
               }]}>
-                  <IconSymbol name="trash.fill" size={17} color="#DC2626" />
-                </View>
-                <View style={styles.rowTextContainer}>
-                  <Text style={[styles.rowTitle, {
+                <IconSymbol name="trash.fill" size={17} color="#DC2626" />
+              </View>
+              <View style={styles.rowTextContainer}>
+                <Text style={[styles.rowTitle, {
                   color: '#DC2626'
                 }]}>Delete Account</Text>
-                  <Text style={[styles.rowSubtitle, {
+                <Text style={[styles.rowSubtitle, {
                   color: colors.textSecondary
                 }]}>
-                    Permanently erase cards and contact records
-                  </Text>
-                </View>
+                  Permanently erase cards and contact records
+                </Text>
               </View>
+            </View>
 
-              <IconSymbol name="chevron.right" size={15} color="#DC2626" />
-            </TouchableOpacity>
-          </View>
+            <IconSymbol name="chevron.right" size={15} color="#DC2626" />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* 7. Footer */}
-        <View style={styles.footer}>
-          <Text style={[styles.footerTextPrimary, {
+      {/* 7. Footer */}
+      <View style={styles.footer}>
+        <Text style={[styles.footerTextPrimary, {
           color: colors.textMuted
         }]}>
-            QuickBiz for Mobile • v{appVersion}
-          </Text>
-          <Text style={[styles.footerTextSecondary, {
+          QuickBiz for Mobile • v{appVersion}
+        </Text>
+        <Text style={[styles.footerTextSecondary, {
           color: colors.textMuted
         }]}>
-            100% On-device ML Kit • End-to-end Local Processing
-          </Text>
-        </View>
-      </ScrollView>
+          100% On-device ML Kit • End-to-end Local Processing
+        </Text>
+      </View>
+    </ScrollView>
 
-      {/* Theme Appearance Modal */}
-      <Modal visible={isThemeModalVisible} transparent animationType="fade" onRequestClose={() => setIsThemeModalVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setIsThemeModalVisible(false)}>
-          <Pressable style={[styles.modalContent, {
+    {/* Theme Appearance Modal */}
+    <Modal visible={isThemeModalVisible} transparent animationType="fade" onRequestClose={() => setIsThemeModalVisible(false)}>
+      <Pressable style={styles.modalBackdrop} onPress={() => setIsThemeModalVisible(false)}>
+        <Pressable style={[styles.modalContent, {
           backgroundColor: colors.card,
           borderColor: colors.border,
           borderWidth: 1
         }]} onPress={e => e.stopPropagation()}>
-            <View style={[styles.modalHeader, {
+          <View style={[styles.modalHeader, {
             borderBottomColor: colors.borderSoft
           }]}>
-              <View>
-                <Text style={[styles.modalTitle, {
+            <View>
+              <Text style={[styles.modalTitle, {
                 color: colors.textPrimary
               }]}>Appearance</Text>
-                <Text style={[styles.modalSubtitle, {
+              <Text style={[styles.modalSubtitle, {
                 color: colors.textSecondary
               }]}>
-                  Choose your preferred color theme
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setIsThemeModalVisible(false)} style={[styles.modalCloseBtn, {
+                Choose your preferred color theme
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setIsThemeModalVisible(false)} style={[styles.modalCloseBtn, {
               backgroundColor: colors.surface
             }]} accessibilityRole="button" accessibilityLabel="Close appearance picker">
-                <IconSymbol name="xmark" size={16} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+              <IconSymbol name="xmark" size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.categoryList}>
-              {['system', 'light', 'dark'].map(themeOpt => {
+          <View style={styles.categoryList}>
+            {['system', 'light', 'dark'].map(themeOpt => {
               const isSelected = themePreference === themeOpt;
               return <TouchableOpacity key={themeOpt} style={[styles.categoryOption, isSelected && {
                 backgroundColor: isDark ? colors.surface : '#FFF8E0',
                 borderColor: isDark ? colors.primary : '#E6D5A8'
               }]} onPress={() => handleSelectTheme(themeOpt)} activeOpacity={0.7}>
-                    <View style={styles.categoryOptionLeft}>
-                      <View style={[styles.categoryOptionRadio, {
+                <View style={styles.categoryOptionLeft}>
+                  <View style={[styles.categoryOptionRadio, {
                     borderColor: colors.border
                   }, isSelected && styles.categoryOptionRadioActive]}>
-                        {isSelected && <View style={styles.categoryOptionRadioInner} />}
-                      </View>
-                      <Text style={[styles.categoryOptionText, {
+                    {isSelected && <View style={styles.categoryOptionRadioInner} />}
+                  </View>
+                  <Text style={[styles.categoryOptionText, {
                     color: colors.textPrimary
                   }, isSelected && styles.categoryOptionTextSelected]}>
-                        {getThemeLabel(themeOpt)}
-                      </Text>
-                    </View>
+                    {getThemeLabel(themeOpt)}
+                  </Text>
+                </View>
 
-                    {isSelected && <IconSymbol name="checkmark" size={16} color="#FA520F" />}
-                  </TouchableOpacity>;
+                {isSelected && <IconSymbol name="checkmark" size={16} color="#FA520F" />}
+              </TouchableOpacity>;
             })}
-            </View>
-          </Pressable>
+          </View>
         </Pressable>
-      </Modal>
+      </Pressable>
+    </Modal>
 
-      {/* Category Selection Modal */}
-      <Modal visible={isCategoryModalVisible} transparent animationType="fade" onRequestClose={() => setIsCategoryModalVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setIsCategoryModalVisible(false)}>
-          <Pressable style={[styles.modalContent, {
+    {/* Category Selection Modal */}
+    <Modal visible={isCategoryModalVisible} transparent animationType="fade" onRequestClose={() => setIsCategoryModalVisible(false)}>
+      <Pressable style={styles.modalBackdrop} onPress={() => setIsCategoryModalVisible(false)}>
+        <Pressable style={[styles.modalContent, {
           backgroundColor: colors.card,
           borderColor: colors.border,
           borderWidth: 1
         }]} onPress={e => e.stopPropagation()}>
-            <View style={[styles.modalHeader, {
+          <View style={[styles.modalHeader, {
             borderBottomColor: colors.borderSoft
           }]}>
-              <View>
-                <Text style={[styles.modalTitle, {
+            <View>
+              <Text style={[styles.modalTitle, {
                 color: colors.textPrimary
               }]}>Default Category</Text>
-                <Text style={[styles.modalSubtitle, {
+              <Text style={[styles.modalSubtitle, {
                 color: colors.textSecondary
               }]}>
-                  Choose the default tag applied when scanning business cards
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setIsCategoryModalVisible(false)} style={[styles.modalCloseBtn, {
+                Choose the default tag applied when scanning business cards
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setIsCategoryModalVisible(false)} style={[styles.modalCloseBtn, {
               backgroundColor: colors.surface
             }]} accessibilityRole="button" accessibilityLabel="Close category picker">
-                <IconSymbol name="xmark" size={16} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+              <IconSymbol name="xmark" size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.categoryList}>
-              {CATEGORIES.map(cat => {
+          <View style={styles.categoryList}>
+            {CATEGORIES.map(cat => {
               const isSelected = defaultCategory === cat;
               return <TouchableOpacity key={cat} style={[styles.categoryOption, isSelected && {
                 backgroundColor: isDark ? colors.surface : '#FFF8E0',
                 borderColor: isDark ? colors.primary : '#E6D5A8'
               }]} onPress={() => handleSelectDefaultCategory(cat)} activeOpacity={0.7}>
-                    <View style={styles.categoryOptionLeft}>
-                      <View style={[styles.categoryOptionRadio, {
+                <View style={styles.categoryOptionLeft}>
+                  <View style={[styles.categoryOptionRadio, {
                     borderColor: colors.border
                   }, isSelected && styles.categoryOptionRadioActive]}>
-                        {isSelected && <View style={styles.categoryOptionRadioInner} />}
-                      </View>
-                      <Text style={[styles.categoryOptionText, {
+                    {isSelected && <View style={styles.categoryOptionRadioInner} />}
+                  </View>
+                  <Text style={[styles.categoryOptionText, {
                     color: colors.textPrimary
                   }, isSelected && styles.categoryOptionTextSelected]}>
-                        {cat}
-                      </Text>
-                    </View>
+                    {cat}
+                  </Text>
+                </View>
 
-                    {isSelected && <IconSymbol name="checkmark" size={16} color="#FA520F" />}
-                  </TouchableOpacity>;
+                {isSelected && <IconSymbol name="checkmark" size={16} color="#FA520F" />}
+              </TouchableOpacity>;
             })}
-            </View>
-          </Pressable>
+          </View>
         </Pressable>
-      </Modal>
-    </SafeAreaView>;
+      </Pressable>
+    </Modal>
+  </SafeAreaView>;
 }
 const styles = StyleSheet.create({
   container: {

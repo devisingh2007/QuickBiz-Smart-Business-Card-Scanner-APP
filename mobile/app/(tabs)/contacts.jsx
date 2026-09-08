@@ -1,16 +1,16 @@
-import React, { useState, useCallback, useEffect, } from 'react';
-import { StyleSheet, View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, } from 'react-native';
-import { SafeAreaView, } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect, } from 'expo-router';
-import { Palette, Typography, } from '@/constants/theme';
-import { useTheme, } from '@/hooks/use-theme';
-import { SearchInput, } from '@/components/ui/SearchInput';
 import { ContactRow, } from '@/components/ui/ContactRow';
 import { EmptyState, } from '@/components/ui/EmptyState';
 import { IconSymbol, } from '@/components/ui/icon-symbol';
+import { SearchInput, } from '@/components/ui/SearchInput';
+import { CATEGORIES, } from '@/constants/categories';
+import { Palette, Typography, } from '@/constants/theme';
+import { useTheme, } from '@/hooks/use-theme';
 import { apiService, } from '@/services/api.service';
 import { contactStore, } from '@/services/contact.store';
-import { CATEGORIES, } from '@/constants/categories';
+import { useFocusEffect, useRouter, } from 'expo-router';
+import React, { useCallback, useEffect, useState, } from 'react';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View, } from 'react-native';
+import { SafeAreaView, } from 'react-native-safe-area-context';
 export default function ContactsScreen() {
   const router = useRouter();
   const {
@@ -64,41 +64,41 @@ export default function ContactsScreen() {
   return <SafeAreaView style={[styles.safeArea, {
     backgroundColor: colors.background
   }]} edges={['top', 'left', 'right']}>
-      {/* Editorial Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, {
+    {/* Editorial Header */}
+    <View style={styles.header}>
+      <View>
+        <Text style={[styles.headerTitle, {
           color: colors.textPrimary
         }]}>Contacts</Text>
-          <Text style={[styles.countBadge, {
+        <Text style={[styles.countBadge, {
           color: colors.textMuted
         }]}>
-            {contacts.length} {contacts.length === 1 ? 'record' : 'records'}
-          </Text>
-        </View>
+          {contacts.length} {contacts.length === 1 ? 'record' : 'records'}
+        </Text>
+      </View>
 
-        <TouchableOpacity style={styles.newContactBtn} onPress={() => router.push({
+      <TouchableOpacity style={styles.newContactBtn} onPress={() => router.push({
         pathname: '/review',
         params: {
           category: selectedCategory !== 'All' ? selectedCategory : 'Other'
         }
       })} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel="Add new contact">
-          <IconSymbol name="plus" size={14} color="#FFFFFF" />
-          <Text style={styles.newContactBtnText}>New Contact</Text>
-        </TouchableOpacity>
-      </View>
+        <IconSymbol name="plus" size={14} color="#FFFFFF" />
+        <Text style={styles.newContactBtnText}>New Contact</Text>
+      </TouchableOpacity>
+    </View>
 
-      {/* Search Bar with 8px radius */}
-      <View style={styles.searchContainer}>
-        <SearchInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Search name, company, email..." />
-      </View>
+    {/* Search Bar with 8px radius */}
+    <View style={styles.searchContainer}>
+      <SearchInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Search name, company, email..." />
+    </View>
 
-      {/* Mistral Category Filter Pills */}
-      <View style={[styles.categoryContainer, {
+    {/* Mistral Category Filter Pills */}
+    <View style={[styles.categoryContainer, {
       borderBottomColor: colors.borderSoft
     }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-          {categories.map(category => {
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+        {categories.map(category => {
           const isSelected = selectedCategory === category;
           return <TouchableOpacity key={category} onPress={() => setSelectedCategory(category)} activeOpacity={0.8} style={[styles.categoryPill, isSelected ? {
             backgroundColor: isDark ? colors.card : colors.textPrimary,
@@ -107,28 +107,28 @@ export default function ContactsScreen() {
             backgroundColor: colors.surface,
             borderColor: colors.border
           }]}>
-                <Text style={[styles.categoryText, isSelected ? {
+            <Text style={[styles.categoryText, isSelected ? {
               color: isDark ? colors.primary : '#FFFFFF',
               fontWeight: '600'
             } : {
               color: colors.textSecondary
             }]}>
-                  {category}
-                </Text>
-              </TouchableOpacity>;
+              {category}
+            </Text>
+          </TouchableOpacity>;
         })}
-        </ScrollView>
-      </View>
+      </ScrollView>
+    </View>
 
-      {/* Contact List */}
-      {loading ? <View style={styles.loadingContainer}>
-          <ActivityIndicator color={Palette.primary} size="small" />
-          <Text style={[styles.loadingText, {
+    {/* Contact List */}
+    {loading ? <View style={styles.loadingContainer}>
+      <ActivityIndicator color={Palette.primary} size="small" />
+      <Text style={[styles.loadingText, {
         color: colors.textMuted
       }]}>
-            Refreshing directory...
-          </Text>
-        </View> : contacts.length === 0 ? <EmptyState title={searchQuery ? 'No Matching Contacts' : 'No Contacts Yet'} description={searchQuery ? `No contacts found matching "${searchQuery}". Try searching with a different term or category.` : 'Your contact library is empty. Scan a business card or enter details manually to start building your directory.'} actionTitle={searchQuery ? 'Clear Search' : 'Scan Business Card'} onAction={searchQuery ? () => setSearchQuery('') : () => router.push('/(tabs)/scan')} secondaryActionTitle={searchQuery ? undefined : 'Enter Manually'} onSecondaryAction={searchQuery ? undefined : () => router.push({
+        Refreshing directory...
+      </Text>
+    </View> : contacts.length === 0 ? <EmptyState title={searchQuery ? 'No Matching Contacts' : 'No Contacts Yet'} description={searchQuery ? `No contacts found matching "${searchQuery}". Try searching with a different term or category.` : 'Your contact library is empty. Scan a business card or enter details manually to start building your directory.'} actionTitle={searchQuery ? 'Clear Search' : 'Scan Business Card'} onAction={searchQuery ? () => setSearchQuery('') : () => router.push('/(tabs)/scan')} secondaryActionTitle={searchQuery ? undefined : 'Enter Manually'} onSecondaryAction={searchQuery ? undefined : () => router.push({
       pathname: '/review',
       params: {
         category: 'Other'
@@ -142,7 +142,7 @@ export default function ContactsScreen() {
         id: item.id
       }
     })} showDivider={index < contacts.length - 1} />} />}
-    </SafeAreaView>;
+  </SafeAreaView>;
 }
 const styles = StyleSheet.create({
   safeArea: {
